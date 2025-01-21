@@ -1,0 +1,1475 @@
+Growing Up Today Study
+========================================================
+
+**Dr. Andrea Roberts** from Harvard School of Public Health is the lead investigator on this project interested in finding DNA methylation signatures correlated to childhood abuse exposure in the sperm of adult participants. **Nicole Gladish** and **Dr. Evan Gatev** will be analyzing the DNA methylation data. **Nicole Gladish** will be validating DNA methylation sites of interest using the pyrosequencing technique.
+
+```{r results='hide', warning=FALSE, message=FALSE}
+setwd("/big_data/ngladish/GUTS")
+library(png)
+library(grid)
+library(methylumi)
+library(gplots)
+library(marray)
+library(lumi)
+library(lattice)
+library(wateRmelon)
+library("RColorBrewer")
+library(plyr)
+library(VennDiagram)
+library(ggplot2)
+library(qvalue)
+library("sva")
+library(parallel)
+library(gridExtra)
+library(grid)
+library("reshape2")
+library(charm)
+library(DMRcate)
+library(Gviz)
+library(plyr)
+library(reshape)
+library(ggplot2)
+library(RColorBrewer)
+library(lme4)
+library(gridExtra)
+library(RCurl)
+source("http://bioconductor.org/biocLite.R") 
+biocLite("impute") 
+library(WGCNA)
+enableWGCNAThreads() 
+library(taRifx)
+library(Rmisc)
+library(ICC)
+library(ggrepel)
+library(BlandAltmanLeh)
+library(glmnet)
+library(parallel)
+```
+
+This RMD contains all the analysis script for figures produced for the manuscript. This is complementary to the pre-processing and normalization script titled "Pre-Processing and Normalization GUTS.Rmd". These two scripts, starting from the raw data out of Genome Studio, are able to produce all of the manuscript data and figures.
+
+The objects used here are the pre-processed, normalized and batch corrected data.
+
+### Calculating delta beta values in association with childhood abuse exposure
+
+### 1. Principal Compenent Analysis
+
+### 2. Differentially Methylated Regions Analysis
+
+### 3. Comparison of DMRcate and PCA
+
+### 4. Pyrosequencing Analysis
+
+### 5. Predictive Analysis
+
+### 6. Replication Analysis
+
+***
+### Calculating delta beta values in association with childhood abuse exposure
+***
+To add biological relevance in relation to our variable of interest we will also use a 5% and 10% delta beta threshold to our analyses. This is calculated by taking the beta value difference between the mean of the highest and lowest childhood abuse exposures for each individual probe.
+
+```{r eval=FALSE}
+load("/big_data/ngladish/GUTS/GUTSNCR.RData")
+GUTSDB <- GUTSNCR
+deltaBeta <- lapply(1:nrow(GUTSDB), function(x) {
+  abuse_means <- tapply(betas((GUTSDB)[x,]), pData(GUTSDB)$abuse_lev, mean, na.rm=T)
+  abm <- abuse_means["3"]-abuse_means["1"]
+  })
+fData(GUTSDB)$dBeta <- as.numeric(deltaBeta)
+save(GUTSDB, file = "GUTSDB.RData")
+```
+
+***
+# 1. Principal Component Analysis
+***
+
+Using all probes (**439,746**) principal component analysis was performed using the R package stats, function princomp. The principal components were centered and then correlated to experimental variables. ANOVA testing was performed on categorical variables while Spearman’s correlations were performed on continuous variables.
+
+```{r eval = FALSE}
+load("/big_data/ngladish/GUTS/GUTSNCR.RData")
+BetaGUTS <- betas(GUTSNCR)
+PCA_full<-princomp(BetaGUTS[complete.cases(BetaGUTS),]) 
+Loadings<-as.data.frame(unclass(PCA_full$loadings))
+vars <- PCA_full$sdev^2
+Importance<-vars/sum(vars)
+
+
+#Restructure meta
+meta <- pData(GUTSNCR)
+meta$race_c<-as.factor(meta$race_c)
+meta$mob96b<-as.factor(meta$mob96b)
+meta$Coll_Date<-as.factor(meta$Coll_Date)
+meta$Coll__Time<-as.factor(meta$Coll__Time)
+
+meta_categorical <- meta[, c(10,15,16,42)]  # input column numbers in meta that contain categorical variables
+meta_continuous <- meta[, c(12,17,23,24,25,26,27,28,30,32,33,38,41)]  # input column numbers in meta that contain continuous variables
+colnames(meta_categorical) <- c("Month of Birth", "Collection Date", "Collection Time", "Race")
+colnames(meta_continuous) <- c("Age", "Semen Volume", "Semen Concentration", "Normal Morphology", "Head Morphology", "Neck Morphology", "Tail Morphology", "CTQ", "CTS", "Sexual Abuse", "Abuse Level", "Abstinence Time","Abuse Continuous")
+
+ord <- c(15,17,14,12,13,6,7,8,9,10,11,16,2,3,1,5,4)
+# or ord<- c(1,4,5,2) etc if you want to specify the order of the rows in the plot
+
+# how far do you want the plot to go?
+PCs_to_view<-8
+
+heat_scree_plot<-function(Loadings, Importance){
+  adjust<-1-Importance[1]
+  pca_adjusted<-Importance[2:length(Importance)]/adjust
+  pca_df<-data.frame(adjusted_variance=pca_adjusted, PC=seq(1:length(pca_adjusted)))
+  
+  scree<-ggplot(pca_df[which(pca_df$PC<(PCs_to_view+1)),],aes(PC,adjusted_variance))+geom_bar(stat = "identity",color="black",fill="grey")+theme_bw()+
+        theme(axis.text = element_text(size =12),
+              axis.title = element_text(size =16),
+              plot.margin=unit(c(1.25,1.6,0.2,3),"cm"))+ylab("Variance")+
+    scale_x_continuous(breaks = seq(1,PCs_to_view,1))
+
+  #### Heat
+  ## correlate meta with PCS
+  ## Run anova of each PC on each meta data variable
+
+ aov_PC_meta <- lapply(1:ncol(meta_categorical), function(covar) sapply(1:ncol(Loadings), 
+        function(PC) summary(aov(Loadings[, PC] ~ meta_categorical[, covar]))[[1]]$"Pr(>F)"[1]))
+  cor_PC_meta <- lapply(1:ncol(meta_continuous), function(covar) sapply(1:ncol(Loadings), 
+        function(PC) (cor.test(Loadings[, PC], as.numeric(meta_continuous[, 
+            covar]), alternative = "two.sided", method = "spearman", na.action = na.omit)$p.value)))
+ names(aov_PC_meta) <- colnames(meta_categorical)
+    names(cor_PC_meta) <- colnames(meta_continuous)
+    aov_PC_meta <- do.call(rbind, aov_PC_meta)
+    cor_PC_meta <- do.call(rbind, cor_PC_meta)
+    aov_PC_meta <- rbind(aov_PC_meta, cor_PC_meta)
+    aov_PC_meta <- as.data.frame(aov_PC_meta)
+  
+  #adjust
+  aov_PC_meta_adjust<-aov_PC_meta[,2:ncol(aov_PC_meta)]
+    
+  #reshape
+  avo<-aov_PC_meta_adjust[,1:PCs_to_view]
+  avo_heat_num<-apply(avo,2, as.numeric)
+  avo_heat<-as.data.frame(avo_heat_num)
+  avo_heat$meta<-rownames(avo)
+  avo_heat_melt<-melt(avo_heat, id=c("meta"))
+  
+  # cluster meta data
+  meta_var_order<-unique(avo_heat_melt$meta)[rev(ord)]
+  avo_heat_melt$meta <- factor(avo_heat_melt$meta, levels = meta_var_order)
+
+  # color if sig
+  avo_heat_melt$Pvalue<-sapply(1:nrow(avo_heat_melt), function(x) if(avo_heat_melt$value[x]<=0.001){"<=0.001"}else{
+    if(avo_heat_melt$value[x]<=0.01){"<=0.01"}else{
+      if(avo_heat_melt$value[x]<=0.05){"<=0.05"}else{">0.05"}}})
+  
+ levels(avo_heat_melt$variable)<-sapply(1:PCs_to_view, function(x) paste("PC",x, sep="" ))
+ 
+  heat<-ggplot(avo_heat_melt, aes(variable,meta, fill = Pvalue)) +
+  geom_tile(color = "black",size=0.5) +
+  theme_gray(8)+scale_fill_manual(values=c("<=0.001" = "#084594","<=0.01"="#4292c6","<=0.05"="#9ecae1",">0.05"="#deebf7"))+
+      theme(axis.text = element_text(size =12, color="black"),
+            axis.text.x = element_text(),
+          axis.title = element_text(size =14),
+          legend.text = element_text(size =12),
+          legend.title = element_text(size =10),
+          legend.position = c(1, 0.4), legend.justification = c(1,1),
+          plot.margin=unit(c(0,2.25,1,1),"cm"))+
+    xlab("Centered Principal Components")+ylab(NULL)
+ 
+  grid.arrange(scree, heat, ncol=1, heights = c(2, 4))
+}
+
+heat_scree_plot(Loadings, Importance)
+```
+
+![Principal Component Analysis](GUTS_PCA.png)
+
+**Figure 1. Principal components were associated with childhood abuse exposure.** PC4, representing 6.24% of the variance present in methylation data, significantly correlates (p < 0.05) with childhood abuse exposure. Darker regions signify stronger correlations between variables and principal components. Abbreviations are as follows: Childhood Trauma Questionnaire (CTQ), Conflict Tactic Scale (CTS), time since ejaculation (TSE).
+
+## Investigating PC4 Probes
+
+We are interested in the probes which contain the highest scores, and therefore contribute the greatest, to PC4. We will be filtering probes using various standard deviations as thresholds. 
+
+I will investigate how many probes meet various filters of PC4 standard deviation and delta beta values. This information will be summarized in a table below. 
+
+```{r eval=FALSE}
+# Subsetting probes with a delta beta of 5% and 10%
+load("/big_data/ngladish/GUTS/GUTSDB.RData")
+
+DB10 <- GUTSDB[fData(GUTSDB)$dBeta <= -0.1 | fData(GUTSDB)$dBeta >= 0.1,]
+Delta10 <- rownames(DB10) #147
+
+DB5 <- GUTSDB[fData(GUTSDB)$dBeta <= -0.05 | fData(GUTSDB)$dBeta >= 0.05,]
+Delta5 <- rownames(DB5) #2,154
+
+# Subsetting probes in PC with top and bottom 1-5% of scores.
+load("/big_data/ngladish/GUTS/GUTSNCR.RData")
+GUTSNCRB <- betas(GUTSNCR)
+meta <- pData(GUTSNCR)
+PCA_full<-princomp(GUTSNCRB) 
+Loadings<-as.data.frame(unclass(PCA_full$loadings))
+
+pcscores <- as.data.frame(PCA_full$scores)
+str(pcscores)
+pcscores <- pcscores[order(pcscores$Comp.5),]
+
+# Top and bottom 1%
+round(0.01*(length(pcscores$Comp.5)))
+test <- as.data.frame(pcscores[1:4397,])
+test1 <- as.data.frame(pcscores[435350:439746,])
+rows <- rbind(test, test1)
+PC4_1 <- rownames(rows) # 8794
+
+# Top and bottom 2%
+round(0.02*(length(pcscores$Comp.5)))
+test <- as.data.frame(pcscores[1:8795,])
+439746 - 8795 + 1
+test1 <- as.data.frame(pcscores[430952:439746,])
+rows <- rbind(test, test1)
+length(PC4_2 <- rownames(rows)) # 17590
+
+# Top and bottom 3%
+round(0.03*(length(pcscores$Comp.5)))
+test <- as.data.frame(pcscores[1:13192,])
+439746 - 13192 + 1
+test1 <- as.data.frame(pcscores[426555:439746,])
+rows <- rbind(test, test1)
+length(PC4_3 <- rownames(rows)) # 26384
+
+# Top and bottom 4%
+round(0.04*(length(pcscores$Comp.5)))
+test <- as.data.frame(pcscores[1:17590,])
+439746 - 17590 + 1
+test1 <- as.data.frame(pcscores[422157:439746,])
+rows <- rbind(test, test1)
+length(PC4_4 <- rownames(rows)) # 35180
+
+# Top and bottom 5%
+round(0.05*(length(pcscores$Comp.5)))
+test <- as.data.frame(pcscores[1:21987,])
+439746 - 21987 + 1
+test1 <- as.data.frame(pcscores[417760:439746,])
+rows <- rbind(test, test1)
+length(PC4_5 <- rownames(rows)) # 43974
+
+
+# Finding the intersections
+
+length(P1DB5 <- intersect(PC4_1, Delta5)) #1,137
+length(P1DB10 <- intersect(PC4_1, Delta10)) #97
+length(P2DB5 <- intersect(PC4_2, Delta5)) #1,443
+length(P2DB10 <- intersect(PC4_2, Delta10)) #110
+length(P3DB5 <- intersect(PC4_3, Delta5)) #1,617
+length(P3DB10 <- intersect(PC4_3, Delta10)) #119
+length(P4DB5 <- intersect(PC4_4, Delta5)) #1,718
+length(P4DB10 <- intersect(PC4_4, Delta10)) #122
+length(P5DB5 <- intersect(PC4_5, Delta5)) #1,793
+length(P5DB10 <- intersect(PC4_5, Delta10)) #126
+save(P1DB5, file = "PC4_1P_5DB_probelist.RData")
+```
+
+# 2. Differentially Methylated Regions Analysis
+
+In order to interpret differential methylation status in our cohort it is biologically meaningful to observe differences of contiguous regions of CpG sites within the genome. As such I will use a couple of methods to try and identify potentially differentially methylated regions (DMRs). 
+
+DMRcate (Peters *et. al* **2015**) code was adapted from Alex L. This uses linear regression and a Gaussian kernal to identify DMRs. It defines a DMR in comparison to a null model.
+
+Here is an excerpt of the article explaining the methedology:
+
+*"Critical to our method are robust estimates of differential methylation (DM) at individual CpG sites derived from limma [43], arguably the most widely used tool for microarray analysis. We pass the square of the moderated t statistic calculated on each 450K probe to our DMR-finding function. We then apply a Gaussian kernel to smooth this metric within a given window, and also derive an expected value of the smoothed estimate (in other words, one with no experimental effect) from the varying density of CpGs sites incurred by reduced representation and irregular spacing."*
+
+I will be using all the probes for this analysis.
+
+```{r eval=FALSE}
+load("/big_data/ngladish/GUTS/GUTSNCR.RData")
+GUTS_betas <- betas(GUTSNCR)
+myMs <- logit2(GUTS_betas)
+pdat<- pData(GUTSNCR)
+design <- model.matrix(~pdat$abuse_lev + pdat$Age + pdat$Volume, pdat, row.names=T)
+myannotation <- cpg.annotate(datatype = "array", object = myMs, analysis.type="differential", design=design, coef=2)
+dmrcoutput <- dmrcate(myannotation, lambda=1000, C=2, pcutoff = 0.05)
+results.ranges <- extractRanges(dmrcoutput, genome = "hg19")
+
+# Making tables to include all DMRs and a seperate table including cpg info underlying DMRs.
+
+fdat <- fData(GUTSNCR)
+fdat$CHR <- as.character(fdat$CHR)
+
+# Pulling out CpGs based on positions from ranges object.
+sig.cpgs <- lapply(1:length(results.ranges), function(x){
+  print(x)
+  coords <- names(ranges(results.ranges))[x]
+  chr <- sub(":.*", "", coords) 
+  chr <- sub("chr", "", chr)
+  bookends <- sub(".*:", "", coords)
+  startcpg <- as.integer(sub("-.*", "", bookends))
+  stopcpg <- as.integer(sub(".*-", "", bookends))
+  cpgs <- rownames(fdat)[fdat$CHR %in% chr & fdat$MAPINFO >= 
+                             startcpg & fdat$MAPINFO <= stopcpg]
+})
+sig.cpgs.list <- unlist(sig.cpgs)
+
+
+#Making a dataframe based on CpGs from ranges object and attaching map info and DMRcate statistics.
+
+dmrinput <- dmrcoutput$input
+sub_dmrinput <- dmrinput[dmrinput$ID %in% sig.cpgs.list,]
+sub_fdat <- fdat[fdat$ILMNID %in% sig.cpgs.list,]
+
+# Sanity check.
+
+sub_fdat <- sub_fdat[order(sub_fdat$ILMNID),]
+sub_dmrinput <- sub_dmrinput[order(sub_dmrinput$ID),]
+dmrcate.in <- as.vector(sub_dmrinput[["ID"]])
+fdat.in <- as.vector(sub_fdat[["ILMNID"]])
+identical(dmrcate.in, fdat.in) 
+colnames(sub_fdat)
+sig.cpgs.fc <- data.frame(cpg=sub_dmrinput$ID, 
+                          FC = sub_dmrinput$betafc,
+                          FDR = sub_dmrinput$fdr,
+                          Gene = sub_fdat$UCSC_REFGENE_NAME,
+                          pvalue = sub_dmrinput$raw,
+                          chr = sub_fdat$CHR,
+                          pos = sub_fdat$MAPINFO)
+
+sig.cpgs.fc$chr <- gsub("^", "chr", sig.cpgs.fc$chr)
+
+# Assigning the correct DMR to each CpG
+
+sig.cpg.dmr <- lapply(1:nrow(sig.cpgs.fc), function(x){
+  print(x)
+  a<- which(sub(":.*", "", names(ranges(results.ranges))) == sig.cpgs.fc$chr[x] & 
+              start(ranges(results.ranges)) <= sig.cpgs.fc$pos[x] & 
+              end(ranges(results.ranges)) >= sig.cpgs.fc$pos[x])
+  names(ranges(results.ranges))[a]
+})
+sig.cpgs.fc$dmr <- unlist(sig.cpg.dmr)
+
+write.table(sig.cpgs.fc, "/big_data/ngladish/GUTS/significant.DMR.cpgs.txt",sep="\t")
+
+# Making a second table with DMR info.
+
+results <- dmrcoutput$results
+ 
+#getting the mean for the DMR - you could do other manipulations here as well 
+dmr.mean.fc <- lapply(1:length(unique(sig.cpgs.fc$dmr)), function(x) {
+  mean(sig.cpgs.fc$FC[which(sig.cpgs.fc$dmr == unique(sig.cpgs.fc$dmr)[x])])
+})
+
+dmr.fc <- data.frame(dmr = unique(sig.cpgs.fc$dmr),
+                     meanbetafc = unlist(dmr.mean.fc))
+
+dmr.fc <- dmr.fc[order(match(dmr.fc$dmr, results$hg19coord)),]
+identical(as.character(dmr.fc$dmr), results$hg19coord)
+dmr.fc$dmr <- as.character(dmr.fc$dmr)
+results <- merge(results, dmr.fc, by.x = "hg19coord", by.y = "dmr") 
+results$chr <- sub(":.*", "", results$hg19coord)
+bookends <- sub(".*:", "", results$hg19coord)
+results$start <- as.integer(sub("-.*", "", bookends))
+results$end <- as.integer(sub(".*-", "", bookends))
+results$width <- (results$end - results$start) + 1
+  
+write.table(results, "/big_data/ngladish/GUTS/significant.DMRs.txt",sep="\t")
+```
+
+These tables were used to compile the following tables for the manuscript:
+
+**Table 2. Significant DMRs associated with childhood abuse exposure and their effect sizes.** Statistically significant DMRs were discovered using DMRcate (FDR ≤ 0.05), had a mean Δβ ≥ 5%, and were verified using biological replicates. All values were obtained by taking the average across the probes within the specified DMR. Δβ values were calculated as the absolute difference between the mean beta values for high and no childhood abuse. Columns labeled “original” are results from the original 34 samples used for the main analysis. Columns labeled “replicates” are results obtained substituting the 12 replicate samples. 
+
+**Supplemental Table 2.Genomic annotation of regions significant differentially methylated by childhood abuse (DMRs).**
+
+## Plotting DMRs
+
+Plotting four representative DMRs
+
+```{r eval = FALSE}
+plotgene <- function(w,x,y,z) {
+  group <- y[,z]
+  gene_betas <- m2beta(w[rownames(x),])
+  plot_dat <- cbind(t(gene_betas), Group = group)
+  plot_dat <- data.frame(plot_dat[,order(colnames(plot_dat))])
+  melt_dat <- melt(plot_dat, id.vars = c("Group"))
+  mapdat <- data.frame(CpG = rep(rownames(x), times =nrow(y)), MAPINFO = rep(x$MAPINFO, times =nrow(y)), DIST.TSS = rep(x$Distance_closest_TSS, times =nrow(y)))
+  mapdat1 <- mapdat[order(mapdat$CpG),]
+  plot_dat1 <- cbind(melt_dat,mapdat1$MAPINFO, mapdat1$DIST.TSS)
+  colnames(plot_dat1)[c(4,5)] <- c("Coordinate", "DIST.TSS")
+  plot_dat1$Group <- as.factor(plot_dat1$Group)
+  return(plot_dat1)
+}
+stat_sum_single <- function(fun, geom="point", ...) {
+  stat_summary(fun.y=fun, geom=geom, size = 2,...)
+}
+
+load("/big_data/ngladish/GUTS/GUTSNCR.RData")
+fdat <- fData(GUTSNCR)
+mvals <- exprs(GUTSNCR)
+pdat <- pData(GUTSNCR)
+
+subbed_fdat <- subset(fdat, CHR == "7")
+subbed_fdat <- subset(subbed_fdat, MAPINFO >= 4242866)
+subbed_fdat <- subset(subbed_fdat, MAPINFO <= 4244372)
+SDK1 <- plotgene(w = mvals, x=subbed_fdat, y=pdat, z="abuse_lev")
+Cluster <- rep("SDK1",length(rownames(SDK1)))
+SDK1 <- cbind(Cluster, SDK1)
+
+subbed_fdat <- subset(fdat, CHR == "8")
+subbed_fdat <- subset(subbed_fdat, MAPINFO >= 27467783)
+subbed_fdat <- subset(subbed_fdat, MAPINFO <= 27470629)
+CLU <- plotgene(w = mvals, x=subbed_fdat, y=pdat, z="abuse_lev")
+Cluster <- rep("CLU",length(rownames(CLU)))
+CLU <- cbind(Cluster, CLU)
+
+subbed_fdat <- subset(fdat, CHR == "10")
+subbed_fdat <- subset(subbed_fdat, MAPINFO >= 135381727)
+subbed_fdat <- subset(subbed_fdat, MAPINFO <= 135381914)
+SYCE1 <- plotgene(w = mvals, x=subbed_fdat, y=pdat, z="abuse_lev")
+Cluster <- rep("SYCE1",length(rownames(SYCE1)))
+SYCE1 <- cbind(Cluster, SYCE1)
+
+subbed_fdat <- subset(fdat, CHR == "17")
+subbed_fdat <- subset(subbed_fdat, MAPINFO >= 44060252)
+subbed_fdat <- subset(subbed_fdat, MAPINFO <= 44061467)
+MAPT <- plotgene(w = mvals, x=subbed_fdat, y=pdat, z="abuse_lev")
+Cluster <- rep("MAPT",length(rownames(MAPT)))
+MAPT <- cbind(Cluster, MAPT)
+
+
+minifdat <- fdat[grep("MAPT|CLU|SDK1|SYCE1", fdat$UCSC_REFGENE_NAME),]
+
+head(fdat)
+DMR_4 <- rbind(SDK1, CLU, SYCE1, MAPT)
+DMR_4 <- merge(DMR_4, minifdat[,c("ILMNID", "CHR")], by.x = "variable", by.y = "ILMNID")
+DMR_4$Gene_Coord <- paste(DMR_4$Cluster, " Cluster - Chromosome ", DMR_4$CHR)
+  
+(p1 <- ggplot(DMR_4, aes(x = Coordinate, y = value, color=Group, group = Group))+ 
+    scale_color_manual(values=c("darkgreen", "orange", "red"),  name="Childhood\nAbuse\nExposure", labels=c("None", "Medium", "High"))+
+geom_point(alpha=0.75)+
+   xlab("Genomic Coordinate")+
+   ylab("Beta Value")+  
+stat_sum_single(mean, geom="line", alpha=0.75) +
+  facet_wrap(~Gene_Coord, nrow = 2, scales = "free_x") +
+  theme_bw(base_size = 9))
+```
+
+![Representative DMRs found in analysis](DMRs_Fig2.png)
+
+**Figure 2. Four genomic regions differentially methylated by childhood abuse.** Differentially methylated regions (DMRs) were defined as regions that differed statistically by abuse exposure at a FDR ≤ 0.05, had a mean Δβ ≥ 5% across probes, and were confirmed using biological replicates. The “CLU cluster” includes the 5’ UTR transcription start site and part of the gene body spanning 2.8kb. The “MAPT cluster” is located in the gene body and spans 1.2kb. The “SDK1 cluster” is located in the gene body and spans 1.5kb. The “SYCE1 cluster” is located in the 5’ UTR and spans 200bp.
+
+Plotting remaining eight DMRs not in main text of manuscript:
+
+```{r eval = FALSE}
+subbed_fdat <- subset(fdat, CHR == "10")
+subbed_fdat <- subset(subbed_fdat, MAPINFO >= 134795270)
+subbed_fdat <- subset(subbed_fdat, MAPINFO <= 134796269)
+CFAP46_probes <- rownames(subbed_fdat)
+CFAP46 <- plotgene(w = mvals, x=subbed_fdat, y=pdat, z="abuse_lev")
+Cluster <- rep("CFAP46",length(rownames(CFAP46)))
+CFAP46 <- cbind(Cluster, CFAP46)
+
+subbed_fdat <- subset(fdat, CHR == "1")
+subbed_fdat <- subset(subbed_fdat, MAPINFO >= 3099233)
+subbed_fdat <- subset(subbed_fdat, MAPINFO <= 3100497)
+PRDM16_probes <- rownames(subbed_fdat)
+PRDM16 <- plotgene(w = mvals, x=subbed_fdat, y=pdat, z="abuse_lev")
+Cluster <- rep("PRDM16",length(rownames(PRDM16)))
+PRDM16 <- cbind(Cluster, PRDM16)
+
+subbed_fdat <- subset(fdat, CHR == "16")
+subbed_fdat <- subset(subbed_fdat, MAPINFO >= 85362963)
+subbed_fdat <- subset(subbed_fdat, MAPINFO <= 85363209)
+MIR5093_probes <- rownames(subbed_fdat)
+MIR5093 <- plotgene(w = mvals, x=subbed_fdat, y=pdat, z="abuse_lev")
+Cluster <- rep("MIR5093",length(rownames(MIR5093)))
+MIR5093 <- cbind(Cluster, MIR5093)
+
+subbed_fdat <- subset(fdat, CHR == "15")
+subbed_fdat <- subset(subbed_fdat, MAPINFO >= 101641336)
+subbed_fdat <- subset(subbed_fdat, MAPINFO <= 101641443)
+LRRK1_probes <- rownames(subbed_fdat)
+LRRK1 <- plotgene(w = mvals, x=subbed_fdat, y=pdat, z="abuse_lev")
+Cluster <- rep("LRRK1",length(rownames(LRRK1)))
+LRRK1 <- cbind(Cluster, LRRK1)
+
+subbed_fdat <- subset(fdat, CHR == "2")
+subbed_fdat <- subset(subbed_fdat, MAPINFO >= 9960583)
+subbed_fdat <- subset(subbed_fdat, MAPINFO <= 9960899)
+TAF1B_probes <- rownames(subbed_fdat)
+TAF1B <- plotgene(w = mvals, x=subbed_fdat, y=pdat, z="abuse_lev")
+Cluster <- rep("TAF1B",length(rownames(TAF1B)))
+TAF1B <- cbind(Cluster, TAF1B)
+
+subbed_fdat <- subset(fdat, CHR == "2")
+subbed_fdat <- subset(subbed_fdat, MAPINFO >= 240723946)
+subbed_fdat <- subset(subbed_fdat, MAPINFO <= 240724176)
+NDUFA10_probes <- rownames(subbed_fdat)
+NDUFA10 <- plotgene(w = mvals, x=subbed_fdat, y=pdat, z="abuse_lev")
+Cluster <- rep("NDUFA10",length(rownames(NDUFA10)))
+NDUFA10 <- cbind(Cluster, NDUFA10)
+
+subbed_fdat <- subset(fdat, CHR == "6")
+subbed_fdat <- subset(subbed_fdat, MAPINFO >= 170500610)
+subbed_fdat <- subset(subbed_fdat, MAPINFO <= 170500967)
+DLL1_probes <- rownames(subbed_fdat)
+DLL1 <- plotgene(w = mvals, x=subbed_fdat, y=pdat, z="abuse_lev")
+Cluster <- rep("DLL1",length(rownames(DLL1)))
+DLL1 <- cbind(Cluster, DLL1)
+
+probes_DMR7 <- c(CFAP46_probes, PRDM16_probes, MIR5093_probes, LRRK1_probes, TAF1B_probes, NDUFA10_probes, DLL1_probes)
+
+minifdat <- fdat[rownames(fdat) %in% probes_DMR7,]
+
+DMR_7 <- rbind(CFAP46, PRDM16, MIR5093, LRRK1, TAF1B, NDUFA10, DLL1)
+DMR_7 <- merge(DMR_7, minifdat[,c("ILMNID", "CHR")], by.x = "variable", by.y = "ILMNID")
+DMR_7$Gene_Coord <- paste(DMR_7$Cluster, " Cluster - Chromosome ", DMR_7$CHR)
+
+ggplot(DMR_7, aes(x = Coordinate, y = value, color=Group, group = Group))+ 
+    scale_color_manual(values=c("darkgreen", "orange", "red"),  name="Childhood\nAbuse\nExposure", labels=c("None", "Medium", "High"))+
+geom_point(alpha=0.75)+
+   xlab("Genomic Coordinate")+
+   ylab("Beta Value")+  
+stat_sum_single(mean, geom="line", alpha=0.75) +
+  facet_wrap(~Gene_Coord, nrow = 2, scales = "free_x") +
+  ylim(0,1) + 
+  theme_bw(base_size = 7.5)
+```
+
+![Supplemental 2. Extra DMRs](Supp_2_Extra_DMR.png)
+
+**Figure Supplemental 2.** Remaining 7of 12 statistically significant childhood abuse DMRs.
+
+# 3. Comparison of PC4 and DMRcate probes
+
+We would like to investigate how much these two analyses (PCA and DMRcate) overlap in their findings. 
+
+I will see if there is a statistically significant overlap between PC4 probes which passed a threshold of +/- 1% and a delta beta of 5% with probes underlying the 13 statistically significant DMRs found with DMRcate as defined above.
+
+```{r eval=FALSE}
+load("/big_data/ngladish/GUTS/GUTS_Harvard/PC4_1P_5DB_probelist.RData")
+load("/big_data/ngladish/GUTS/GUTS_Harvard/DMRcate_Probes.RData")
+length(PC4_DMR_overlap <- intersect(P1DB5, probes)) #35
+```
+
+![PCA and DMRcate Overlap](PCA_DMRcate_Overlap.png)
+
+I want to determine if this overlap is significant. I will perform permutation analysis in order to determine this. This will involve randomly subsetting 1,137 probes from all probes (439,746) to mimic PCA and overlap these probe lists with subsets of 67 probes from all probes (439,746) mimicing DMRcate analysis. 
+
+```{r eval = FALSE}
+load("/big_data/ngladish/GUTS/GUTSNCR.RData")
+
+DMRcateProbes <- probes
+
+Permutate_overlap<-function(probe_list1, probe_list2){
+  len1<-length(probe_list1)
+  len2<-length(probe_list2)
+  rnd1<-rownames(GUTSNCR)[sample(1:nrow(GUTSNCR), len1)]
+  rnd2<-rownames(GUTSNCR)[sample(1:nrow(GUTSNCR), len2)]
+  length(intersect(rnd1, rnd2))
+}
+
+expected_overlap<-sapply(1:1000000, function(seed){
+  set.seed(seed)
+  Permutate_overlap(DMRcateProbes, P1DB5)
+})
+
+mean(expected_overlap)
+sd(expected_overlap)
+
+Overlap_pvalue_function<-function(probelist1, probelist2, permutated_overlaps, multiple_test_correction_number){
+  real_overlap<-length(intersect(unique(probelist1), unique(probelist2))) 
+  print(paste("Corrected P value for the question are the lists more overlapping than by chance?",
+              p.adjust(length(which(permutated_overlaps>=real_overlap))/length(permutated_overlaps), method="fdr", n=multiple_test_correction_number), sep=" "))
+  print(paste("Corrected P value for the question are the lists more distinct than by chance?",
+              p.adjust(length(which(permutated_overlaps<=real_overlap))/length(permutated_overlaps), method="fdr", n=multiple_test_correction_number), sep=" "))}
+
+Overlap_pvalue_function(probes,DMRcateProbes, expected_overlap,1)
+
+
+expected_overlap <- as.data.frame(expected_overlap)
+
+
+ggplot(data = expected_overlap, aes(expected_overlap)) +
+  geom_histogram(bins = 40) +
+  geom_vline(xintercept = 35, colour="red", linetype = "longdash") +
+  labs(x = "Number of Overlapping Probes") +
+  theme_bw(base_size = 18)
+```
+
+# 4. Pyrosequencing Analysis
+
+We need to perform validation on a small subset of sites to ensure the results obtained are not due to the technique we are using (Illumina BeadChip Array). These sites will be measured using pyrosequencing. A correlation is performed to compare the two methods.
+
+We performed pyrosequencing on these sites due to their significance; **cg04703951 (LME/LM), cg00438222, cg08780220 (LME/LM and EN), cg09926099 (LME/LM), cg00293616 (LME/LM)**. 
+
+```{r eval=FALSE}
+load("/big_data/ngladish/GUTS/GUTSNC.RData")
+# Importing the pyrosequencing data
+pyro = read.csv("GUTS_pyro3.csv", header = TRUE)
+# To make the first row row.names
+pyrot <- pyro[,-1]
+rownames(pyrot) <- pyro[,1]
+pyrot <- data.matrix(pyrot)
+head(pyrot)
+
+# Pulling out the probes of interest from the methylumi object
+probes <- c("cg04703951", "cg00438222", "cg08780220", "cg09926099", "cg00293616")
+GUTSP <- GUTSNC[row.names(GUTSNC) %in% probes,]
+ilum <- t(betas(GUTSP))
+ilum <- ilum[row.names(ilum)%in%row.names(pyrot),] 
+head(ilum)
+ilum <- ilum[, c("cg04703951", "cg00438222", "cg08780220", "cg09926099", "cg00293616") ]
+head(ilum)
+```
+
+```{r eval = FALSE}
+colnames(pyrot)
+colnames(ilum)
+pyrocor <- lapply(1:ncol(ilum), function(x) {
+  cor.test(ilum[,x],  pyrot[,x])
+})
+
+results.all <- do.call(rbind, pyrocor)
+rownames(results.all) <- colnames(ilum)
+head(results.all)
+pyrocor <- as.data.frame(results.all)
+pyrocor$p.value <- as.numeric(pyroab$p.value)
+myvars <- c("estimate", "p.value")
+pyrocor <- pyrocor[myvars]
+Res <- pyrocor 
+cor.qval <- p.adjust(p = Res$p.value)
+pyrocor<-cbind(pyrocor,cor.qval)
+names(pyrocor)[3] <- "qvalues"
+pyrocor
+```
+
+Here is a table summary of the results:
+
+![Supplemental Fig. 4A. Correlation of Pyrosequencing Platform with the Illumina Platform](GUTS_Supp_4_Pyro_Table.png)
+
+**Figure Supplemental 4A. Measurements of DNAm using the 450K array and the pyrosequencing platform were highly correlated.** A. Correlations obtained using Spearman’s rank method. 
+
+Bland-Altman Plot:
+
+```{r eval=FALSE}
+oPar<-par(mfrow=c(1,3))
+pl <- bland.altman.plot(ilum[,"cg04703951"], pyrot[,"cg04703951"], conf.int=.95, main="Validation of site cg04703951", xlab = "Means", ylab = "Differences")
+pl <- bland.altman.plot(ilum[,"cg00438222"], pyrot[,"cg00438222"], conf.int=.95, main="Validation of site cg00438222", xlab = "Means", ylab = "Differences")
+pl <- bland.altman.plot(ilum[,"cg08780220"], pyrot[,"cg08780220"], conf.int=.95, main="Validation of site cg08780220", xlab = "Means", ylab = "Differences")
+par<-oPar
+
+oPar<-par(mfrow=c(1,2))
+pl <- bland.altman.plot(ilum[,"cg09926099"], pyrot[,"cg09926099"], conf.int=.95, main="Validation of site cg09926099", xlab = "Means", ylab = "Differences")
+pl <- bland.altman.plot(ilum[,"cg00293616"], pyrot[,"cg00293616"], conf.int=.95, main="Validation of site cg00293616", xlab = "Means", ylab = "Differences")
+par<-oPar
+```
+
+![Supplemental Fig. 4B. Bland-Altman of Pyrosequencing Platform with the Illumina Platform (3)](GUTS_Supp_4B1_Pyro_BlandAlt.png)
+
+![Supplemental Fig. 4B. Bland-Altman of Pyrosequencing Platform with the Illumina Platform (2)](GUTS_Supp_4B2_Pyro_BlandAlt.png)
+
+**Figure Supplemental 4A. Measurements of DNAm using the 450K array and the pyrosequencing platform were highly correlated.** B. Bland-Altman plots of CpG sites validated in pyrosequencing.
+
+These plots imply Illumina readings are generally 10-20% higher in beta values measured.
+
+## Extra Pyrosequencing Site
+
+There are other sites located on the pyrosequencing array which can be analysed. Specifically, there were four other sites located near CpG cg04703951:
+
+```{r eval=FALSE}
+xpyro = read.csv("GUTS_DMR_pyro.csv", header = TRUE)
+rownames(xpyro) <- xpyro[,1]
+pyrot <- data.matrix(xpyro)
+xpyro <- xpyro[,-1]
+names <- rownames(xpyro)
+meta <- pData(GUTSNC)
+meta <- meta[rownames(meta) %in% names, ]
+DMRpyro <- cbind(xpyro, meta[match(rownames(xpyro), rownames(meta))])
+```
+
+Observing 450K sites located in a DMR using all samples:
+
+```{r eval=FALSE}
+metac <- pData(GUTSNC)
+
+cg06925179 <- betas((GUTSNC)["cg06925179",])[rownames((GUTSNC)["cg06925179",]),]
+cg04703951 <- betas((GUTSNC)["cg04703951",])[rownames((GUTSNC)["cg04703951",]),]
+
+data <- data.frame(ID = rownames(metac), cg06925179 = cg06925179, cg04703951 = cg04703951, dat = as.character(metac$abuse_lev), Race = as.character(metac$race))
+
+datam <- melt(data, beta=c("cg06925179","cg04703951"))
+colnames(datam) <- c("ID", "Abuse", "Race", "Site", "Beta")
+head(datam)
+
+(p <- ggplot(datam, aes(Site, Beta, colour = Abuse)) + geom_boxplot(alpha = 1, outlier.colour = NA, fill = NA) + geom_point(position=position_dodge(width = 0.75), aes(shape=Race, group=Abuse, size = 1)) + scale_color_manual("Physical\nAbuse",labels = c("Low", "Medium", "High"), values = c("#e7298a", "#7570b3", "#1b9e77")) + scale_shape("Race", labels = c("Asian", "Hispanic", "Caucasian")) + theme(axis.text.x = element_text(colour = "black"), axis.text.y = element_text(colour = "black"))  + labs(x = "CpG Site", y = "Beta Value"))
+```
+
+These three sites are located within 500bp of one another. There is a trend they share which is those with high childhood abuse exposure have a decrease in DNA methylation within this region with a delta beta of around 10-30%.
+
+The extra pyrosequencing sites using only one replicate per individual which is what was run in this assay.
+
+```{r eval=FALSE}
+datas <- data.frame(ID = rownames(DMRpyro), Pos2 = DMRpyro$Pos2, Pos3 = DMRpyro$Pos3, Pos4 = DMRpyro$Pos4, Pos5 = DMRpyro$Pos5, dat = as.character(DMRpyro$abuse_lev))
+
+
+datasm <- melt(datas, beta=c("Pos2","Pos3","Pos4", "Pos5"))
+colnames(datasm) <- c("ID", "Abuse","Site", "Beta")
+head(datasm)
+
+(p <- ggplot(datasm, aes(Site, Beta, colour = Abuse)) + geom_boxplot(alpha = 1) + scale_color_manual("Physical\nAbuse",labels = c("Low", "Medium", "High"), values = c("#e7298a", "#7570b3", "#1b9e77")) + theme(axis.text.x = element_text(colour = "black"), axis.text.y = element_text(colour = "black")) + labs(x = "CpG Site", y = "Beta Value"))
+
+(p <- ggplot(datasm, aes(Site, Beta, colour = Abuse)) + geom_boxplot(alpha = 1, outlier.colour = NA, fill = NA) + geom_point(position=position_dodge(width = 0.75), aes(shape=Race, group=Abuse, size = 1)) + scale_color_manual("Physical\nAbuse",labels = c("Low", "Medium", "High"), values = c("#e7298a", "#7570b3", "#1b9e77")) + scale_shape("Race", labels = c("Asian", "Hispanic", "Caucasian")) + theme(axis.text.x = element_text(colour = "black"), axis.text.y = element_text(colour = "black"))  + labs(x = "CpG Site", y = "Beta Value"))
+```
+
+These CpG sites are located between cg04703951 and cg02622647. They also appear to follow the same trend as the other three sites.
+
+
+Performing a Spearmans correlation test between all sites to see if we can define them as a **differentially methylated region (DMR)**. One sample failed pyrosequencing at some of the extra sites and so this sample will be removed from further analysis.
+
+```{r eval=FALSE}
+dataf <- data[complete.cases(data),]
+dataf2 <- dataf[,-1]
+rownames(dataf) <- dataf[,1]
+rownames(dataf2) <- dataf[,1]
+dataf2 <- as.matrix(dataf2[,-8])
+(test <- cor.test(dataf2[,"cg06925179s"], dataf2[,"Pos2"]))
+correl.stats=function(X, method = "spearman", use = "complete" , conf.level = 0.95){
+require(forward)
+combs=t(fwd.combn(colnames(X), 2))
+temp=t(apply(combs,1, function(x){
+Y=X[,as.character(x)]
+res=cor.test(Y[,1],Y[,2], use = use, method = method, conf.level = conf.level)
+temp2=c(res$estimate, res$statistic, res$p.value, res$conf.int[1:2])
+names(temp2)=c('rho','statistic','pvalue')
+temp2}))
+rownames(temp)=paste(combs[,1],combs[,2],sep="")
+temp
+}
+
+Res <- as.data.frame(correl.stats(dataf2)) 
+DMRCor = Res[(!is.na(Res[,3])),] 
+cor.qval <- p.adjust(p = DMRCor$pvalue)
+DMRCor<-cbind(DMRCor,cor.qval)
+names(DMRCor)[4] <- "qvalues"
+order <- order(DMRCor$qvalues)
+DMRCor$qvalues[order]
+(DMRCor <- DMRCor[order, ])
+```
+
+![Correlation of All Sites Located Within Potential DMR](GUTS_Tables.008.png)
+
+All correlation pairs have rho values greater than 88% and all are significant even after multiple test correction. This adds confidence when deciding whether this region is a true DMR.
+
+Next I will run a Kruskal-Wallis test to determine if there is a significant difference between childhood abuse exposure groups in these new pyrosequencing sites:
+
+```{r eval=FALSE}
+Results = matrix(NA, nrow = ncol(dataf2), ncol = 1)
+rownames(Results) = colnames(dataf2)
+colnames(Results) = c("Pvalue")
+pyroabuse <- lapply(1:ncol(dataf2), function(x) {
+  kruskal.test(dataf2[,x], dataf$dat)
+})
+results.all <- do.call(rbind, pyroabuse)
+rownames(results.all) <- colnames(dataf2)
+pyroab <- as.data.frame(results.all)
+pyroab$p.value <- as.numeric(pyroab$p.value)
+myvars <- c("statistic", "p.value")
+pyroab <- pyroab[myvars]
+Res <- pyroab 
+cor.qval <- p.adjust(p = Res$p.value)
+pyroab<-cbind(pyroab,cor.qval)
+names(pyroab)[3] <- "qvalues"
+order <- order(pyroab$qvalues)
+pyroab$qvalues[order]
+(pyroab <- pyroab[order, ])
+```
+
+![Testing if DMR Sites are Significantly Different Between Childhood Abuse Exposures](GUTS_Tables.009.png)
+
+All the sites in this analysis are significantly different between the abuse exposure levels with p-values and FDR < 0.05.
+
+Calculating the delta beta values of all the new sites:
+
+```{r eval = FALSE}
+Pos2 <- data.frame(ID = rownames(dataf),Pos2 = dataf$Pos2, dat = as.character(dataf$dat))
+abuse_means <- tapply(Pos2$Pos2, Pos2$dat, mean, na.rm=T)
+abuse_means
+abs(abuse_means["1"]-abuse_means["3"])
+
+Pos3 <- data.frame(ID = rownames(dataf),Pos3 = dataf$Pos3, dat = as.character(dataf$dat))
+abuse_means <- tapply(Pos3$Pos3, Pos3$dat, mean, na.rm=T)
+abuse_means
+abs(abuse_means["1"]-abuse_means["3"])
+
+Pos4 <- data.frame(ID = rownames(dataf), Pos4 = dataf$Pos4, dat = as.character(dataf$dat))
+abuse_means <- tapply(Pos4$Pos4, Pos4$dat, mean, na.rm=T)
+abuse_means
+abs(abuse_means["1"]-abuse_means["3"])
+
+Pos5 <- data.frame(ID = rownames(dataf), Pos5 = dataf$Pos5, dat = as.character(dataf$dat))
+abuse_means <- tapply(Pos5$Pos5, Pos5$dat, mean, na.rm=T)
+abuse_means
+abs(abuse_means["1"]-abuse_means["3"])
+```
+
+![Delta Beta Values of Potential DMR Sites](GUTS_Tables.010.png)
+
+Keep in mind the Pos site data was obtained using pyrosequencing methods and only one sample per individual where the cg sites were calculated using the 450K data and all samples including biological replicates.
+
+```{r eval=FALSE}
+plotgene <- function(w,x,y,z) {
+  group <- y[,z]
+  gene_betas <- w
+  plot_dat <- cbind(t(gene_betas), Group = group)
+  plot_dat <- data.frame(plot_dat[,order(colnames(plot_dat))])
+  melt_dat <- melt(plot_dat, id.vars = c("Group"))
+  mapdat <- data.frame(CpG = rep(rownames(x), times =nrow(y)), MAPINFO = rep(x$MAPINFO, times =nrow(y)), DIST.TSS = rep(x$Distance_closest_TSS, times =nrow(y)))
+  mapdat1 <- mapdat[order(mapdat$CpG),]
+  plot_dat1 <- cbind(melt_dat,mapdat1$MAPINFO, mapdat1$DIST.TSS)
+  colnames(plot_dat1)[c(4,5)] <- c("Coordinate", "DIST.TSS")
+  plot_dat1$Group <- as.factor(plot_dat1$Group)
+  return(plot_dat1)
+}
+stat_sum_single <- function(fun, geom="point", ...) {
+  stat_summary(fun.y=fun, geom=geom, size = 2,...)
+}
+
+pyro = read.csv("Pyro_ARL17A_DMR.csv", header = TRUE, row.names=1)
+pyrofdata = read.csv("Pyro_ARL17A_DMR_fdat.csv", header = TRUE, row.names = 1)
+pyrobeta <- t(pyro)
+load("/big_data/ngladish/GUTS/GUTSNC.RData")
+
+sampls <- colnames(pyrobeta)
+pdat <- pData(GUTSNC)
+pdat <- pdat[pdat$PAlias %in% sampls,]
+bvals <- pyrobeta
+subbed_fdat <- pyrofdata
+
+plotthis1 <- plotgene(w = bvals, x=subbed_fdat, y=pdat, z="abuse_lev")
+
+plotgene <- function(w,x,y,z) {
+  group <- y[,z]
+  gene_betas <- m2beta(w[rownames(x),])
+  plot_dat <- cbind(t(gene_betas), Group = group)
+  plot_dat <- data.frame(plot_dat[,order(colnames(plot_dat))])
+  melt_dat <- melt(plot_dat, id.vars = c("Group"))
+  mapdat <- data.frame(CpG = rep(rownames(x), times =nrow(y)), MAPINFO = rep(x$MAPINFO, times =nrow(y)), DIST.TSS = rep(x$Distance_closest_TSS, times =nrow(y)))
+  mapdat1 <- mapdat[order(mapdat$CpG),]
+  plot_dat1 <- cbind(melt_dat,mapdat1$MAPINFO, mapdat1$DIST.TSS)
+  colnames(plot_dat1)[c(4,5)] <- c("Coordinate", "DIST.TSS")
+  plot_dat1$Group <- as.factor(plot_dat1$Group)
+  return(plot_dat1)
+}
+stat_sum_single <- function(fun, geom="point", ...) {
+  stat_summary(fun.y=fun, geom=geom, size = 2,...)
+}
+
+load("/big_data/ngladish/GUTS/GUTSNCR.RData")
+fdat <- fData(GUTSNCR)
+mvals <- exprs(GUTSNCR)
+pdat <- pData(GUTSNCR)
+
+subbed_fdat <- subset(fdat, CHR == "17")
+subbed_fdat <- subset(subbed_fdat, MAPINFO >= 43578568)
+subbed_fdat <- subset(subbed_fdat, MAPINFO <= 43578911)
+
+plotthis2 <- plotgene(w = mvals, x=subbed_fdat, y=pdat, z="abuse_lev")
+
+list2 <- rep("450K",length(rownames(plotthis2)))
+plotthis2 <- cbind(list2, plotthis2)
+
+list2 <- rep("Pyrosequencing",length(rownames(plotthis1)))
+plotthis1 <- cbind(list2, plotthis1)
+pyro_450K <- rbind(plotthis2, plotthis1)
+
+ggplot(pyro_450K, aes(x = Coordinate, y = value, color=Group, group = Group))+ 
+    scale_color_manual(values=c("darkgreen", "orange", "red"),  name="Childhood\nAbuse\nExposure", labels=c("None", "Medium", "High"))+
+geom_point(alpha=0.75)+
+   xlab("Chromosome 17 Coordinate")+
+   ylab("Beta Value")+  
+stat_sum_single(mean, geom="line", alpha=0.75) +
+  facet_wrap(~list2, nrow = 2) +
+  theme_bw(base_size = 12)
+```
+
+![Figure 3. ARL17A Cluster 450K vs. Pyro](Fig3_ARL17a_450_Pyro.png)
+
+**Figure 3. Additional sites measured during pyrosequencing of “ARL17A cluster” trended similarly with 450K sites in relation to childhood abuse.** The “ARL17A cluster” found using DMRcate is located 30kb away from ARL17A and spans 344bp. 450K methylation measurements of site cg04703951 (top panel) was confirmed using pyrosequencing techniques (bottom panel). The pyrosequencing assay measured DNAm at four additional sites not represented on the 450K array (bottom panel). 
+
+## Pyrosequencing Other DMR Sites
+
+```{r eval=FALSE}
+plotgenePyro <- function(w,x,y,z) {
+  group <- y[,z]
+  gene_betas <- w
+  plot_dat <- cbind(t(gene_betas), Group = group)
+  plot_dat <- data.frame(plot_dat[,order(colnames(plot_dat))])
+  melt_dat <- melt(plot_dat, id.vars = c("Group"))
+  mapdat <- data.frame(CpG = rep(rownames(x), times =nrow(y)), MAPINFO = rep(x$MAPINFO, times =nrow(y)), DIST.TSS = rep(x$Distance_closest_TSS, times =nrow(y)))
+  mapdat1 <- mapdat[order(mapdat$CpG),]
+  plot_dat1 <- cbind(melt_dat,mapdat1$MAPINFO, mapdat1$DIST.TSS)
+  colnames(plot_dat1)[c(4,5)] <- c("Coordinate", "DIST.TSS")
+  plot_dat1$Group <- as.factor(plot_dat1$Group)
+  return(plot_dat1)
+}
+stat_sum_single <- function(fun, geom="point", ...) {
+  stat_summary(fun.y=fun, geom=geom, size = 2,...)
+}
+
+plotgene <- function(w,x,y,z) {
+  group <- y[,z]
+  gene_betas <- m2beta(w[rownames(x),])
+  plot_dat <- cbind(t(gene_betas), Group = group)
+  plot_dat <- data.frame(plot_dat[,order(colnames(plot_dat))])
+  melt_dat <- melt(plot_dat, id.vars = c("Group"))
+  mapdat <- data.frame(CpG = rep(rownames(x), times =nrow(y)), MAPINFO = rep(x$MAPINFO, times =nrow(y)), DIST.TSS = rep(x$Distance_closest_TSS, times =nrow(y)))
+  mapdat1 <- mapdat[order(mapdat$CpG),]
+  plot_dat1 <- cbind(melt_dat,mapdat1$MAPINFO, mapdat1$DIST.TSS)
+  colnames(plot_dat1)[c(4,5)] <- c("Coordinate", "DIST.TSS")
+  plot_dat1$Group <- as.factor(plot_dat1$Group)
+  return(plot_dat1)
+}
+stat_sum_single <- function(fun, geom="point", ...) {
+  stat_summary(fun.y=fun, geom=geom, size = 2,...)
+}
+
+pyro = read.csv("Pyro_All_Sites.csv", header = TRUE, row.names=1)
+pyrobeta <- as.data.frame(t(pyro))
+load("/big_data/ngladish/GUTS/GUTSNC.RData")
+
+sampls <- colnames(pyrobeta)
+pdat <- pData(GUTSNC)
+pdat <- pdat[pdat$PAlias %in% sampls,]
+probes <- c("cg00438222")
+bvals <- pyrobeta[rownames(pyrobeta) %in% probes,]
+Pyro_Sub <- GUTSNC[rownames(GUTSNC) %in% probes,]
+subbed_fdat <- fData(Pyro_Sub)
+
+plotthis1 <- plotgenePyro(w = bvals, x=subbed_fdat, y=pdat, z="abuse_lev")
+
+load("/big_data/ngladish/GUTS/GUTSNCR.RData")
+fdat <- fData(GUTSNCR)
+mvals <- exprs(GUTSNCR)
+pdat <- pData(GUTSNCR)
+
+subbed_fdat <- subset(fdat, CHR == "17")
+subbed_fdat <- subset(subbed_fdat, MAPINFO >= 44060252)
+subbed_fdat <- subset(subbed_fdat, MAPINFO <= 44061467)
+
+plotthis2 <- plotgene(w = mvals, x=subbed_fdat, y=pdat, z="abuse_lev")
+
+list2 <- rep("MAPT Cluster 450K",length(rownames(plotthis2)))
+plotthis2 <- cbind(list2, plotthis2)
+
+list2 <- rep("MAPT Cluster Pyrosequencing",length(rownames(plotthis1)))
+plotthis1 <- cbind(list2, plotthis1)
+
+#LRRK1 Sites
+sampls <- colnames(pyrobeta)
+pdat <- pData(GUTSNC)
+pdat <- pdat[pdat$PAlias %in% sampls,]
+probes <- c("cg09926099", "cg00293616")
+bvals <- pyrobeta[rownames(pyrobeta) %in% probes,]
+Pyro_Sub <- GUTSNC[rownames(GUTSNC) %in% probes,]
+subbed_fdat <- fData(Pyro_Sub)
+
+plotthis3 <- plotgenePyro(w = bvals, x=subbed_fdat, y=pdat, z="abuse_lev")
+
+fdat <- fData(GUTSNCR)
+mvals <- exprs(GUTSNCR)
+pdat <- pData(GUTSNCR)
+
+subbed_fdat <- subset(fdat, CHR == "15")
+subbed_fdat <- subset(subbed_fdat, MAPINFO >= 101641336)
+subbed_fdat <- subset(subbed_fdat, MAPINFO <= 101641443)
+
+plotthis4 <- plotgene(w = mvals, x=subbed_fdat, y=pdat, z="abuse_lev")
+
+list2 <- rep("LRRK1 Cluster 450K",length(rownames(plotthis4)))
+plotthis4 <- cbind(list2, plotthis4)
+
+list2 <- rep("LRRK1 Cluster Pyrosequencing",length(rownames(plotthis3)))
+plotthis3 <- cbind(list2, plotthis3)
+pyro_450K <- rbind(plotthis2, plotthis1)
+pyro_450K_2 <-  rbind(plotthis4, plotthis3)
+
+ggplot(pyro_450K, aes(x = Coordinate, y = value, color=Group, group = Group))+ 
+    scale_color_manual(values=c("darkgreen", "orange", "red"),  name="Childhood\nAbuse\nExposure", labels=c("None", "Medium", "High"))+
+geom_point(alpha=0.75)+
+   xlab("Chromosome 17 Coordinate")+
+   ylab("Beta Value")+  
+stat_sum_single(mean, geom="line", alpha=0.75) +
+  facet_wrap(~list2, nrow = 2) +
+  theme_bw(base_size = 18)
+
+ggplot(pyro_450K_2, aes(x = Coordinate, y = value, color=Group, group = Group))+ 
+    scale_color_manual(values=c("darkgreen", "orange", "red"),  name="Childhood\nAbuse\nExposure", labels=c("None", "Medium", "High"))+
+geom_point(alpha=0.75)+
+   xlab("Chromosome 15 Coordinate")+
+   ylab("Beta Value")+  
+stat_sum_single(mean, geom="line", alpha=0.75) +
+  facet_wrap(~list2, nrow = 2) +
+  theme_bw(base_size = 18)
+```
+
+![Supplemental Figure 5 B. MAPT DMR pyrosequenced sites](MAPT_DMR_Pyro.png)
+
+![Supplemental Figure 5 B. LRRK1 DMR pyrosequenced sites](LRRK1_DMR_Pyro.png)
+
+** Supplemental Figure 5 B.** DNAm at additional CpG sites measured with pyrosequencing that are within DMRs identified with the 450k array.
+
+# 5. Predictive Analysis
+
+Evan Gatev performed two types of predictive analyses. The first is producing a predictor using all the probes:
+
+```{r eval=FALSE}
+load("/big_data/ngladish/GUTS/GUTSNC.RData")
+load("/big_data/ngladish/GUTS/DMRcate_Probes.RData") # 67 DMR probes from Nicole 
+probes_12DMRs=setdiff(probes,c("cg02785501","cg11404502","cg26058778","cg05538161")) # as instructed by Nicole to remove non-verified probes from replicate abalysis.
+betac_GUTS=data.frame(t(betas(GUTSNC)))
+replicates <- c("33", "22", "36", "38", "40", "42", "44", "47", "49", "51", "52", "55", "57")
+betac_GUTS_nrn=betac_GUTS[! rownames(betac_GUTS)%in%c("33", "22", "36", "38", "40", "42", "44", "47", "49", "51", "52", "55", "57"),-length(betac_GUTS)]
+pdata_all=pData(GUTSNC)
+# dichotomize abuse 
+pdata_all$abuse_egg=1
+pdata_all[pdata_all$abuse_lev<3,"abuse_egg"]=0
+#View(pdata_all[,c("abuse_lev","abuse_egg")])
+pdata_all=pdata_all[! rownames(pdata_all)%in%c("33", "22", "36", "38", "40", "42", "44", "47", "49", "51", "52", "55", "57"),]
+# sanity check
+summary(rownames(pdata_all)==rownames(betac_GUTS_nrn))
+set.seed(7329405) # for reproducibility (run on ubuntu 16.04.1)
+test_all=cv.glmnet( as.matrix(betac_GUTS_nrn),as.factor(pdata_all$abuse_egg),family = "binomial",nfolds=10, type.measure="class", standardize = FALSE, alpha = 0.5) 
+# the CV performance of 68% in the draft: (or, typo at 71% from different machine/glmnet version run)
+round(1-test_all$cvm[[which(test_all$lambda==test_all$lambda.1se)]],2)
+# get the probes in the predictor
+coeff.test_all <- coef(test_all$glmnet.fit, s = test_all$lambda.1se)
+actindx.test_all <- which(as.vector(coeff.test_all) != 0)[-1]-1
+actindx.test_all # 3 probes
+rownames(coeff.test_all)[actindx.test_all+1] # "cg02622647" "cg04703951" "cg17369694
+intersect(rownames(coeff.test_all)[actindx.test_all+1],probes_12DMRs) ### FOR LAST DRAFT - this is the intersection with the 12 DMRs
+```
+
+The second analysis involves looking at only probes containined in the most significant DMRs from clusters ("NDUFA10", "MIR5093", "LRRK1" and "ARL17A). This also contains code for verifying in the replicate samples.
+
+```{r eval=FALSE}
+# use the 4 DMRs only:
+top4dmr=c("NDUFA10", "MIR5093", "LRRK1", "ARL17A")
+top4dmr_prb=c("cg02622647" ,"cg04703951", "cg06925179" ,"cg00293616" ,"cg06375969" ,"cg09926099" ,"cg00537837", "cg08428188" ,"cg08675364", "cg12707926" ,"cg06905155" ,"cg08578317", "cg20333904")
+set.seed(7329405)
+top4dmr_cvglmnet=cv.glmnet( as.matrix(betac_GUTS_nrn[top4dmr_prb]),as.factor(pdata_all$abuse_egg),family = "binomial",nfolds=5, type.measure="class", alpha = 1) #keep prevaildated; 
+
+# CV accuracy: 82%
+round(1-top4dmr_cvglmnet$cvm[[which(top4dmr_cvglmnet$lambda==top4dmr_cvglmnet$lambda.min)]] ,2)
+
+coeff.top4dmr_cvglmnet <- coef(top4dmr_cvglmnet$glmnet.fit, s = top4dmr_cvglmnet$lambda.min)
+actindx.top4dmr_cvglmnet <- which(as.vector(coeff.top4dmr_cvglmnet) != 0)[-1]
+length(actindx.top4dmr_cvglmnet) # 4 probes
+
+prb.glmcv_top4dmr_cvglmnet=rownames(coeff.top4dmr_cvglmnet)[actindx.top4dmr_cvglmnet]
+
+#"cg02622647" "cg09926099" "cg00537837" "cg20333904" probes in the predictor:
+prb.glmcv_top4dmr_cvglmnet 
+
+# in-sample predict correctly 29/34 = 85%
+top4dmr_cvglmnet_glmnet_pred=round(predict(top4dmr_cvglmnet$glmnet.fit,as.matrix(betac_GUTS_nrn[top4dmr_prb]),type="response",s=top4dmr_cvglmnet$lambda.min))
+summary(pdata_all$abuse_egg == top4dmr_cvglmnet_glmnet_pred) # 
+
+
+# the re-sampling to estimate p-values - RUNS A LONG TIME!!
+len_top4dmr_prb=length(prb.glmcv_top4dmr_cvglmnet )
+len_betac_GUTS_nrn=length(betac_GUTS_nrn) # use all probes NOT just variable !!!
+
+N_perm=10000
+resamp_p=c()
+
+set.seed(7329405)
+for (i in 1:N_perm){
+  s_indx=sample(len_betac_GUTS_nrn,len_top4dmr_prb)
+  rs_df=cbind(as.factor(pdata_all$abuse_egg),betac_GUTS_nrn[s_indx])
+  names(rs_df)[1]="ab"
+
+  test_loc=glm( ab~.,data=rs_df,family = "binomial") #, keep=T) #keep prevaildated; 
+  
+  test_loc_pred=round(predict(test_loc,type="response"))
+  
+  resamp_p=c(resamp_p,as.numeric(summary(pdata_all$abuse_egg == test_loc_pred)[[3]])) 
+}
+
+length(resamp_p)
+
+#p-value 0.002
+length(resamp_p[resamp_p>28])/N_perm  # 19.43% - for 13 with a=0.5;  SO NEED FEWER TO START WITH?
+
+# ## test on the replicates
+load("/big_data/ngladish/GUTS/GUTSNCRR.RData")
+
+betac_ng12=data.frame(t(betas(GUTSNCRR)))
+pdata_ng12=pData(GUTSNCRR)
+
+pdata_ng12$abuse_egg=1
+pdata_ng12[pdata_ng12$abuse_lev<3,"abuse_egg"]=0
+#View(pdata_ng12[,c("abuse_lev","abuse_egg")])
+
+summary(rownames(pdata_ng12)==rownames(betac_ng12))
+
+# predict replicates
+test_n12_glmnet_pred_top4dmr=round(predict(top4dmr_cvglmnet$glmnet.fit,as.matrix(betac_ng12[top4dmr_prb]),type="response",s=top4dmr_cvglmnet$lambda.min))
+summary(pdata_ng12$abuse_egg == test_n12_glmnet_pred_top4dmr) # 10 out of 12
+
+# data frames with predicted for plotting - all and replicates - Nicole has plot code
+abuse_predicted_df_all=data.frame(pdata_all$abuse_egg, top4dmr_cvglmnet_glmnet_pred)
+names(abuse_predicted_df_all)=c("Abuse","Predicted Abuse")
+
+abuse_predicted_df_rep=data.frame(pdata_ng12$abuse_egg, test_n12_glmnet_pred_top4dmr)
+names(abuse_predicted_df_rep)=c("Abuse","Predicted Abuse")
+```
+
+Plotting the results:
+
+```{r eval=FALSE}
+load("/big_data/ngladish/GUTS/abuse_predicted_df_all.RData")
+load("/big_data/ngladish/GUTS/abuse_predicted_df_rep.RData")
+predict <- abuse_predicted_df_all
+predict_Rep <- abuse_predicted_df_rep
+colnames(predict)[2] <- "Predicted_Abuse"
+colnames(predict_Rep)[2] <- "Predicted_Abuse"
+predict$Type <- "Original"
+predict_Rep$Type <- "Replicate"
+predict$Abuse <- as.factor(predict$Abuse)
+predict_Rep$Abuse <- as.factor(predict_Rep$Abuse)
+predict$Predicted_Abuse <- as.factor(predict$Predicted_Abuse)
+predict_Rep$Predicted_Abuse <- as.factor(predict_Rep$Predicted_Abuse)
+
+test <- rbind(predict, predict_Rep)
+
+ggplot(test, aes(x=Abuse, y=Predicted_Abuse)) +
+  geom_point(alpha = 0.5, size=5, position = position_jitter(0.1,0.1), col = "slateblue") +
+  scale_x_discrete(breaks=c("0", "1"), labels=c("None", "High")) +
+  scale_y_discrete(breaks=c("0", "1"), labels=c("None", "High")) +
+  labs(x = "Actual Abuse Level", y = "Predicted Abuse Level", size=12) +
+  facet_wrap(~ Type) +
+  theme_bw( base_size = 18)
+```
+
+![Supplemental 6. Predictive DMR](GUTS_FigS6.Predict_DMR.png)
+
+**Supplemental Figure 6. DNA methylation marker for childhood abuse exposure.** The marker is based on four probes (cg02622647, cg09926099, cg00537837, cg20333904) selected from the four most-significant DMRs (NDUFA10, MIR5093, LRRK1 and ARL17A) and achieved an accuracy of 85% (p-value of 0.0015) in predicting low versus high childhood abuse exposure (left panel). We used a bootstrap method to estimate the p-value. The predictive accuracy was similar in the replication set (right panel). 
+
+# 6. Replicate Analysis
+
+## Comparison of 67 DMR probes between cohort and biological replicates - Median Analysis.
+
+As the biological replicates have to be dichotomized, I also will have to dichotomize the main cohort to obtain an accurate comparison. 
+
+I will calculate the median beta values for each childhood abuse exposure seperately for the cohort and replicates per probe.
+
+```{r eval=FALSE}
+load("/big_data/ngladish/GUTS/DMRcate_Probes.RData")
+load("/big_data/ngladish/GUTS/GUTSNC.RData")
+load("/big_data/ngladish/GUTS/GUTSNCRR.RData")
+
+samps <- c("34","35","37","39","43","45","46","48","50","53","54","56")
+OrigReps <- GUTSNC[, sampleNames(GUTSNC)%in%samps]
+DMR_OrigReps <- OrigReps[rownames(OrigReps) %in% probes,]
+DMR_Reps <- GUTSNCRR[rownames(GUTSNCRR) %in% probes,]
+
+abuse_1 <- c("1", "2")
+abuse_3 <- c("3")
+
+OrigDMR_1 <- DMR_OrigReps[, pData(DMR_OrigReps)$abuse_lev %in% abuse_1 ]
+OrigDMR_3 <- DMR_OrigReps[, pData(DMR_OrigReps)$abuse_lev %in% abuse_3 ]
+RepDMR_1 <- DMR_Reps[, pData(DMR_Reps)$abuse_lev %in% abuse_1 ]
+RepDMR_3 <- DMR_Reps[, pData(DMR_Reps)$abuse_lev %in% abuse_3 ]  
+
+bOrigDMR_1 <- betas(OrigDMR_1)
+bOrigDMR_3 <- betas(OrigDMR_3)
+bRepDMR_1 <- betas(RepDMR_1)
+bRepDMR_3 <- betas(RepDMR_3)
+
+rmedsOrig_1 <- as.data.frame(apply(bOrigDMR_1, 1, median)) 
+rmedsOrig_3 <- as.data.frame(apply(bOrigDMR_3, 1, median)) 
+rmedsDMR_1 <- as.data.frame(apply(bRepDMR_1, 1, median)) 
+rmedsDMR_3 <- as.data.frame(apply(bRepDMR_3, 1, median)) 
+
+Abuse_1_DMR_Diff <- rmedsOrig_1 - rmedsDMR_1
+Abuse_3_DMR_Diff <- rmedsOrig_3 - rmedsDMR_3
+Abuse_Med_Diff <- cbind(rmedsOrig_1, rmedsDMR_1, Abuse_1_DMR_Diff, rmedsOrig_3, rmedsDMR_3, Abuse_3_DMR_Diff)
+colnames(Abuse_Med_Diff) <- c("Original_Abuse_1", "Replicate_Abuse_1", "Median_Beta_Difference_1", "Original_Abuse_3", "Replicate_Abuse_3", "Median_Beta_Difference_3")
+write.csv(Abuse_Med_Diff, file = "Median_Diff_Abuse_Rep_Orig.csv")
+```
+
+Many of these 67 probes have high variability between biological replicates, some differing with abuse level. It may be benificial to only report DMRs in the paper whose majority of probes do not vary over time. This can be accomplished using an ICC measure to filter out the probes which vary too much. 
+
+## ICC Analysis
+
+On all probes
+
+```{r eval=FALSE}
+load("/big_data/ngladish/GUTS/GUTSNC.RData")
+samps <- c("33","34","35","36","37","38","39","40","42","43","44","45","46","47","48","49","50","51","52","53","54","55","56","57")
+RepsOnly <- GUTSNC[, sampleNames(GUTSNC)%in%samps]
+bDMR_Reps <- as.data.frame(t(betas(RepsOnly)))
+pDat_Reps <- pData(RepsOnly)
+results_Reps <- lapply(1:ncol(bDMR_Reps), function(x) {
+  ICCest(x = pDat_Reps$id, y = bDMR_Reps[,x], data = bDMR_Reps)
+})
+results.allReps <- do.call(rbind, results_Reps)
+rownames(results.allReps) <- colnames(bDMR_Reps)
+write.csv(results.allReps, file = "RepAll_ICC.csv")
+```
+
+Specifically on DMR probes
+
+```{r eval=FALSE}
+load("/big_data/ngladish/GUTS/DMRcate_Probes.RData")
+load("/big_data/ngladish/GUTS/GUTSNC.RData")
+
+samps <- c("33","34","35","36","37","38","39","40","42","43","44","45","46","47","48","49","50","51","52","53","54","55","56","57")
+RepsOnly <- GUTSNC[, sampleNames(GUTSNC)%in%samps]
+DMR_Reps <- RepsOnly[rownames(RepsOnly) %in% probes,]
+
+# Making a dataframe containing samples labelled as original or replicate
+bDMR_Reps <- as.data.frame(t(betas(DMR_Reps)))
+pDat_Reps <- pData(DMR_Reps)
+
+results_Reps <- lapply(1:ncol(bDMR_Reps), function(x) {
+  ICCest(x = pDat_Reps$id, y = bDMR_Reps[,x], data = bDMR_Reps)
+})
+results.all_Reps <- do.call(rbind, results_Reps)
+rownames(results.all_Reps) <- colnames(bDMR_Reps)
+
+write.csv(results.all_Reps, file = "Rep_DMR_ICC.csv")
+```
+
+Plotting the ICC scores between replicates for DMR probes:
+
+```{r eval=FALSE}
+ICC_Table <- read.csv(file = "Rep_DMR_ICC.csv", header = T)
+Cluster_name <- read.csv("Cluster_Name.csv")
+Cluster_name <- Cluster_name[!(Cluster_name$Cluster.Name=="TCERG1L"),]
+Cluster_name$Probes <- as.character(Cluster_name$Probes)
+Cluster_name <- Cluster_name[order(Cluster_name$Cluster.Name, Cluster_name$Probes),]
+Cluster_name$Order <- c(1:64)
+Cluster_name$Probes <- reorder(Cluster_name$Probes, Cluster_name$Order)
+ICC_Table <- ICC_Table[ order(match(ICC_Table$X, Cluster_name$Probes)), ]
+identical(as.character(ICC_Table$X), as.character(Cluster_name$Probes))
+ICC_Table <- cbind(ICC_Table, Cluster_name)
+
+ggplot(ICC_Table, aes(x = ICC_Table$Probes,y=ICC,ymin=LowerCI,ymax=UpperCI, color=Cluster.Name, group = Cluster.Name))+
+  geom_pointrange() +
+  geom_hline(yintercept = 0.7, linetype = "dashed") +
+  coord_flip()+
+  scale_x_discrete(name = "CpG") +
+  scale_color_discrete(name = "Cluster") +
+  theme(axis.text.y  = element_text(size = 7, color = "black"), axis.text.x  = element_text(color = "black")) 
+```
+
+![Supplemental Figure 3. ICC DMR probes](Supp_3_ICC_DMR.png)
+
+**Figure Supplemental 3. Probes located in DMRs have high intraclass correlation (ICC).** 90% of probes in significant DMRs have ICC ≥ 0.7 (dashed line). A single ICC score was obtained for each probe using 24 samples (2 biological replicates per participant). A value of 1 would indicate the biological replicates are in perfect concordance with one another. Whiskers represent 95% confidence intervals. 
+
+## Visualizing Replicates to Originals
+
+```{r eval=FALSE}
+plotgene <- function(w,x,y,z) {
+  group <- y[,z]
+  gene_betas <- m2beta(w[rownames(x),])
+  plot_dat <- cbind(t(gene_betas), Group = group)
+  plot_dat <- data.frame(plot_dat[,order(colnames(plot_dat))])
+  melt_dat <- melt(plot_dat, id.vars = c("Group"))
+  mapdat <- data.frame(CpG = rep(rownames(x), times =nrow(y)), MAPINFO = rep(x$MAPINFO, times =nrow(y)), DIST.TSS = rep(x$Distance_closest_TSS, times =nrow(y)))
+  mapdat1 <- mapdat[order(mapdat$CpG),]
+  plot_dat1 <- cbind(melt_dat,mapdat1$MAPINFO, mapdat1$DIST.TSS)
+  colnames(plot_dat1)[c(4,5)] <- c("Coordinate", "DIST.TSS")
+  plot_dat1$Group <- as.factor(plot_dat1$Group)
+  return(plot_dat1)
+}
+stat_sum_single <- function(fun, geom="point", ...) {
+  stat_summary(fun.y=fun, geom=geom, size = 2,...)
+}
+
+load("/big_data/ngladish/GUTS/GUTSNCR.RData")
+fdat <- fData(GUTSNCR)
+mvals <- exprs(GUTSNCR)
+pdat <- pData(GUTSNCR)
+
+subbed_fdat <- subset(fdat, CHR == "7")
+subbed_fdat <- subset(subbed_fdat, MAPINFO >= 4242866)
+subbed_fdat <- subset(subbed_fdat, MAPINFO <= 4244372)
+SDK1 <- plotgene(w = mvals, x=subbed_fdat, y=pdat, z="abuse_lev")
+Cluster <- rep("SDK1",length(rownames(SDK1)))
+SDK1 <- cbind(Cluster, SDK1)
+
+subbed_fdat <- subset(fdat, CHR == "8")
+subbed_fdat <- subset(subbed_fdat, MAPINFO >= 27467783)
+subbed_fdat <- subset(subbed_fdat, MAPINFO <= 27470629)
+CLU <- plotgene(w = mvals, x=subbed_fdat, y=pdat, z="abuse_lev")
+Cluster <- rep("CLU",length(rownames(CLU)))
+CLU <- cbind(Cluster, CLU)
+
+subbed_fdat <- subset(fdat, CHR == "10")
+subbed_fdat <- subset(subbed_fdat, MAPINFO >= 135381727)
+subbed_fdat <- subset(subbed_fdat, MAPINFO <= 135381914)
+SYCE1 <- plotgene(w = mvals, x=subbed_fdat, y=pdat, z="abuse_lev")
+Cluster <- rep("SYCE1",length(rownames(SYCE1)))
+SYCE1 <- cbind(Cluster, SYCE1)
+
+subbed_fdat <- subset(fdat, CHR == "17")
+subbed_fdat <- subset(subbed_fdat, MAPINFO >= 44060252)
+subbed_fdat <- subset(subbed_fdat, MAPINFO <= 44061467)
+MAPT <- plotgene(w = mvals, x=subbed_fdat, y=pdat, z="abuse_lev")
+Cluster <- rep("MAPT",length(rownames(MAPT)))
+MAPT <- cbind(Cluster, MAPT)
+
+
+minifdat <- fdat[grep("MAPT|CLU|SDK1|SYCE1", fdat$UCSC_REFGENE_NAME),]
+
+head(fdat)
+DMR_4 <- rbind(SDK1, CLU, SYCE1, MAPT)
+DMR_4 <- merge(DMR_4, minifdat[,c("ILMNID", "CHR")], by.x = "variable", by.y = "ILMNID")
+DMR_4$Gene_Coord <- paste(DMR_4$Cluster, " Cluster - Chromosome ", DMR_4$CHR)
+
+  
+ggplot(DMR_4, aes(x = Coordinate, y = value, color=Group, group = Group))+ 
+    scale_color_manual(values=c("darkgreen", "orange", "red"),  name="Childhood\nAbuse\nExposure", labels=c("Low", "Medium", "High"))+
+geom_point(alpha=0.75)+
+   xlab("Genomic Coordinate")+
+   ylab("Beta Value")+  
+stat_sum_single(mean, geom="line", alpha=0.75) +
+  facet_wrap(~Gene_Coord, nrow = 2, scales = "free_x") +
+  theme_bw(base_size = 18)
+```
+
+Plotting remaining eight DMRs not in main text of manuscript
+
+```{r eval=FALSE}
+subbed_fdat <- subset(fdat, CHR == "10")
+subbed_fdat <- subset(subbed_fdat, MAPINFO >= 134795270)
+subbed_fdat <- subset(subbed_fdat, MAPINFO <= 134796269)
+CFAP46_probes <- rownames(subbed_fdat)
+CFAP46 <- plotgene(w = mvals, x=subbed_fdat, y=pdat, z="abuse_lev")
+Cluster <- rep("CFAP46",length(rownames(CFAP46)))
+CFAP46 <- cbind(Cluster, CFAP46)
+
+subbed_fdat <- subset(fdat, CHR == "1")
+subbed_fdat <- subset(subbed_fdat, MAPINFO >= 3099233)
+subbed_fdat <- subset(subbed_fdat, MAPINFO <= 3100497)
+PRDM16_probes <- rownames(subbed_fdat)
+PRDM16 <- plotgene(w = mvals, x=subbed_fdat, y=pdat, z="abuse_lev")
+Cluster <- rep("PRDM16",length(rownames(PRDM16)))
+PRDM16 <- cbind(Cluster, PRDM16)
+
+subbed_fdat <- subset(fdat, CHR == "16")
+subbed_fdat <- subset(subbed_fdat, MAPINFO >= 85362963)
+subbed_fdat <- subset(subbed_fdat, MAPINFO <= 85363209)
+MIR5093_probes <- rownames(subbed_fdat)
+MIR5093 <- plotgene(w = mvals, x=subbed_fdat, y=pdat, z="abuse_lev")
+Cluster <- rep("MIR5093",length(rownames(MIR5093)))
+MIR5093 <- cbind(Cluster, MIR5093)
+
+subbed_fdat <- subset(fdat, CHR == "15")
+subbed_fdat <- subset(subbed_fdat, MAPINFO >= 101641336)
+subbed_fdat <- subset(subbed_fdat, MAPINFO <= 101641443)
+LRRK1_probes <- rownames(subbed_fdat)
+LRRK1 <- plotgene(w = mvals, x=subbed_fdat, y=pdat, z="abuse_lev")
+Cluster <- rep("LRRK1",length(rownames(LRRK1)))
+LRRK1 <- cbind(Cluster, LRRK1)
+
+subbed_fdat <- subset(fdat, CHR == "2")
+subbed_fdat <- subset(subbed_fdat, MAPINFO >= 9960583)
+subbed_fdat <- subset(subbed_fdat, MAPINFO <= 9960899)
+TAF1B_probes <- rownames(subbed_fdat)
+TAF1B <- plotgene(w = mvals, x=subbed_fdat, y=pdat, z="abuse_lev")
+Cluster <- rep("TAF1B",length(rownames(TAF1B)))
+TAF1B <- cbind(Cluster, TAF1B)
+
+subbed_fdat <- subset(fdat, CHR == "2")
+subbed_fdat <- subset(subbed_fdat, MAPINFO >= 240723946)
+subbed_fdat <- subset(subbed_fdat, MAPINFO <= 240724176)
+NDUFA10_probes <- rownames(subbed_fdat)
+NDUFA10 <- plotgene(w = mvals, x=subbed_fdat, y=pdat, z="abuse_lev")
+Cluster <- rep("NDUFA10",length(rownames(NDUFA10)))
+NDUFA10 <- cbind(Cluster, NDUFA10)
+
+subbed_fdat <- subset(fdat, CHR == "6")
+subbed_fdat <- subset(subbed_fdat, MAPINFO >= 170500610)
+subbed_fdat <- subset(subbed_fdat, MAPINFO <= 170500967)
+DLL1_probes <- rownames(subbed_fdat)
+DLL1 <- plotgene(w = mvals, x=subbed_fdat, y=pdat, z="abuse_lev")
+Cluster <- rep("DLL1",length(rownames(DLL1)))
+DLL1 <- cbind(Cluster, DLL1)
+
+subbed_fdat <- subset(fdat, CHR == "10")
+subbed_fdat <- subset(subbed_fdat, MAPINFO >= 133376617)
+subbed_fdat <- subset(subbed_fdat, MAPINFO <= 133377079)
+TCERG1L_probes <- rownames(subbed_fdat)
+TCERG1L <- plotgene(w = mvals, x=subbed_fdat, y=pdat, z="abuse_lev")
+Cluster <- rep("TCERG1L",length(rownames(TCERG1L)))
+TCERG1L <- cbind(Cluster, TCERG1L)
+
+probes_DMR8 <- c(CFAP46_probes, PRDM16_probes, MIR5093_probes, LRRK1_probes, TAF1B_probes, NDUFA10_probes, DLL1_probes, TCERG1L_probes)
+
+minifdat <- fdat[rownames(fdat) %in% probes_DMR8,]
+
+DMR_8 <- rbind(CFAP46, PRDM16, MIR5093, LRRK1, TAF1B, NDUFA10, DLL1, TCERG1L)
+DMR_8 <- merge(DMR_8, minifdat[,c("ILMNID", "CHR")], by.x = "variable", by.y = "ILMNID")
+DMR_8$Gene_Coord <- paste(DMR_8$Cluster, " Cluster - Chromosome ", DMR_8$CHR)
+  head(DMR_8)
+ggplot(DMR_8, aes(x = Coordinate, y = value, color=Group, group = Group))+ 
+    scale_color_manual(values=c("darkgreen", "orange", "red"),  name="Childhood\nAbuse\nExposure", labels=c("Low", "Medium", "High"))+
+geom_point(alpha=0.75)+
+   xlab("Genomic Coordinate")+
+   ylab("Beta Value")+  
+stat_sum_single(mean, geom="line", alpha=0.75) +
+  facet_wrap(~Gene_Coord, nrow = 2, scales = "free_x") +
+  ylim(0,1) + 
+  theme_bw(base_size = 12)
+```
+
+## 7. Data Table 67 DMR probes
+
+Some extra code needed to complete the large data analysis table.
+
+### PC4 Scores
+
+```{r eval=FALSE}
+load("/big_data/ngladish/GUTS/GUTSNCR.RData")
+load("/big_data/ngladish/GUTS/DMRcate_Probes.RData")
+GUTSNCRB <- betas(GUTSNCR)
+meta <- pData(GUTSNCR)
+PCA_full<-princomp(GUTSNCRB) 
+Loadings<-as.data.frame(unclass(PCA_full$loadings))
+pcscores <- PCA_full$scores
+PC4 <- as.matrix(pcscores[,5])
+(sd(pcscores[,5]))
+class(PC4scores_DMR)
+PC4scores_DMR <- as.matrix(PC4[rownames(PC4) %in% probes, ])
+write.csv(PC4scores_DMR, "PC4scores_DMR.csv")
+```
+
+### Delta Beta
+
+```{r  eval=FALSE}
+# Original Sample Delta Beta
+
+load("/big_data/ngladish/GUTS/GUTSDB.RData")
+GUTSDB_DMR <- GUTSDB[rownames(GUTSDB) %in% probes,]
+fdat <- fData(GUTSDB_DMR)
+GUTSDB_DMR <- as.data.frame(fdat$dBeta, rownames(fdat))
+write.csv(GUTSDB_DMR, "GUTSDB_DMR.csv")
+
+# Replicate Sample Delta Beta
+load("/big_data/ngladish/GUTS/GUTSNCRR.RData")
+meta_dicot <- pData(GUTSNCRR)
+meta_dicot[10, "abuse_lev"] <- 1 
+GUTSDB_Rep <- GUTSNCRR[rownames(GUTSNCRR) %in% probes,]
+deltaBeta <- lapply(1:nrow(GUTSDB_Rep), function(x) {
+  abuse_means <- tapply(betas((GUTSDB_Rep)[x,]), meta_dicot$abuse_lev, mean, na.rm=T)
+  abm <- abuse_means["3"]-abuse_means["1"]
+  })
+fData(GUTSDB_Rep)$dBeta <- as.numeric(deltaBeta)
+fdat <- fData(GUTSDB_Rep)
+GUTSDB_Rep <- as.data.frame(fdat$dBeta, rownames(fdat))
+write.csv(GUTSDB_Rep, "GUTSDB_Rep.csv")
+```
+
+# 7. Data Table Information (Table 2)
+
+![Principal Component Analysis](PC4_DB_Table.png)
+
+**Table 2. Probes with the highest scores on PC4 in relation to childhood abuse exposure.** Probes with top PC4 scores and delta beta (Δβ) levels. Δβ values were calculated by taking the absolute difference between the mean betas for the highest and lowest childhood abuse exposures. Purple highlighting refers to probe subset further investigated.

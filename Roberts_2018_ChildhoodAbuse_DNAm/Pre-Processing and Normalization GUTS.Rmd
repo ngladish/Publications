@@ -1,0 +1,643 @@
+Pre-Processing and Normalization (SWAN Method)
+========================================================
+
+This cohort is called the Growing Up Today Study and contains 34 individuals with 13 biological replicate spermatozoan samples. DNA methylation was measured in each sample using the **Illumina 450K BeadArray Chip**. Below is the pre-processing and normalization performed using **GenomeStudio** and **RStudio** platforms. This project was run in collaboration with Dr. Andrea Roberts from Harvard university. 
+
+# Pre-processing and Normalization
+
+Colour correction and background subtraction using specific control probes contained in the chip technolgy were completed using **GenomeStudio**, software developed by **Illumina**. 
+
+```{r results='hide', warning=FALSE, message=FALSE}
+#Loading Libraries
+setwd("/big_data/ngladish/GUTS")
+library(methylumi)
+library(gplots)
+library(marray)
+library(lumi)
+library(lattice)
+library(wateRmelon)
+library("RColorBrewer")
+library(plyr)
+library(VennDiagram)
+library(ggplot2)
+library(qvalue)
+library("sva")
+library(parallel)
+library(gridExtra)
+library(grid)
+library("reshape2")
+```
+
+Loading in GenomeStudio files to make lumi objects
+```{r, eval = FALSE}
+sampleFile <- ("GUTSSampleSheet.txt") 
+allFile <- ("GUTS_alldataGS.txt")
+betaFile <- ("GUTS_avgbetaGS.txt")
+qcFile <-  ("GUTS_qcGS.txt")
+```
+
+## Producing the lumi objects
+
+The **lumi** package was designed by Du *et. al* (2008) to perform normalizations (amongst other functions) for Illumina microarray data in R.
+
+```{r eval=FALSE}
+GUTS <- lumiMethyR(allFile) 
+GUTS.2 <- methylumiR(betaFile,qcfile=qcFile)
+```
+
+There are **485,577** probes with **48** samples.
+
+Adding the metadata:
+
+```{r eval=FALSE}
+sampleInfo <- read.delim(sampleFile, row.names=1, stringsAsFactors=F)
+stopifnot(all(sampleNames(GUTS)%in%rownames(sampleInfo)))
+sampleInfo <- sampleInfo[sampleNames(GUTS),] 
+pData(GUTS) <- sampleInfo
+save(GUTS, file = "GUTS.RData")
+save(GUTS.2, file = "GUTS.2.RData")
+```
+
+```{r}
+load("/big_data/ngladish/GUTS/GUTS.RData")
+load("/big_data/ngladish/GUTS/GUTS.2.RData")
+```
+
+## Probe Filtering
+
+Based on design, probe filtering prior to normalization and analysis is necessary. These include removing control probes, probes which do not have a strong signal above background and probes which bind multiple sites within the genome.
+
+### Removing SNP Control Probes
+
+There are **65** control probes which measure single nucleotide polymorphisms which we use for quality control. We remove them from further analysis.
+
+```{r}
+GUTSR <- GUTS
+GUTS.rs <- GUTS[substring(featureNames(GUTS),1,2)=="rs",] 
+GUTSR <- GUTSR[substring(featureNames(GUTSR),1,2)!="rs",] 
+```
+
+**GUTS.rs** object contains only the SNP probes. The remaining object **GUTSR** has **485,512** probes.
+
+### Removing bad probes
+
+Bad probes are defined as those which fail in more than 10% of samples (badAvgbeta) and probes with poor detection p-values of >0.01 (badDetP) in more than 10% of samples:
+
+```{r}
+all(featureNames(GUTSR)%in%featureNames(GUTS.2)) 
+all(sampleNames(GUTSR)%in%sampleNames(GUTS.2)) 
+avgbeta <- betas(GUTS.2)[featureNames(GUTSR),sampleNames(GUTSR)]
+badAvgbeta <- is.na(avgbeta)
+nbadAvgbeta <- sum(rowSums(badAvgbeta)>=2)
+badDetP <- detection(GUTSR)>0.01
+nbadDetP <- sum(rowSums(badDetP)>=2) 
+badProbes<-rownames(badAvgbeta)[rowSums(badAvgbeta)>=2|rowSums(badDetP)>=2]
+GUTSR <- GUTSR[!featureNames(GUTSR)%in%badProbes] 
+```
+
+There were **12,353** badAvgbeta probes and **2,144** badDetP probes leaving **471,106** probes.
+
+### Removing Sex Probes
+
+GUTS contains all males and so there was no need to remove the sex probes.
+
+```{r eval = FALSE}
+GUTS.xy <- GUTS[fData(GUTS)$CHR%in%c("X","Y"),]
+dim (GUTS.xy) # 11648, 349
+```
+
+### Removing poorly designed probes
+
+We remove probes which either measure a CpG which is also a SNP (polymorphic CpG) or contain a SNP within the probe. Only SNPs present in >5% of the population were removed. This process uses Magda Price's annotation (Price *et. al* 2013):
+
+```{r}
+snp_index <- which(is.na(fData(GUTSR)$n_SNPCpG))
+GUTSR<- GUTSR[snp_index, ] 
+```
+
+There were **19,968** probes which meet this description leaving **451,138** probes.
+
+Probes which bind their target region plus sites located on the X and Y chromosomes are also removed (multiple binders):
+
+```{r}
+xy_hit_index <- which(fData(GUTSR)$XY_Hits == "XY_NO") 
+GUTSR<- GUTSR[xy_hit_index, ]
+```
+
+There are **11,392** probes removed with **439,746** remaining. 
+
+Here is a summary of probes removed:
+
+![Probes Removed](GUTS_Tables.001.png)
+
+## Initial Data Investigation
+
+### Replicate Analysis
+
+There are several biological replicates taken approximately 3 months apart and one technical replicate (15). As a quality control we will check if the replicates pair/correlate as expected.
+
+The 65 control SNP probes are used to determine the accuracy of the run and to analyze similarity between replicates:
+
+```{r fig.height=4, fig.width=8}
+par(cex=0.8)
+plotSampleRelation(GUTS.rs,method="cluster", cex=0.8)
+```
+
+The replicates cluster together as expected.
+
+```{r eval=FALSE}
+bGUTS <- (betas(GUTS.rs))
+(cor <- cor.test(bGUTS[,"15"], bGUTS[,"rep-15"]))
+```
+
+```{r eval = FALSE, echo=FALSE}
+(cor <- cor.test(bGUTS[,"22"], bGUTS[,"41"]))
+(cor <- cor.test(bGUTS[,"33"], bGUTS[,"34"]))
+(cor <- cor.test(bGUTS[,"35"], bGUTS[,"36"]))
+(cor <- cor.test(bGUTS[,"37"], bGUTS[,"38"]))
+(cor <- cor.test(bGUTS[,"39"], bGUTS[,"40"]))
+(cor <- cor.test(bGUTS[,"42"], bGUTS[,"43"]))
+(cor <- cor.test(bGUTS[,"44"], bGUTS[,"45"]))
+(cor <- cor.test(bGUTS[,"46"], bGUTS[,"47"]))
+(cor <- cor.test(bGUTS[,"48"], bGUTS[,"49"]))
+(cor <- cor.test(bGUTS[,"50"], bGUTS[,"51"]))
+(cor <- cor.test(bGUTS[,"52"], bGUTS[,"53"]))
+(cor <- cor.test(bGUTS[,"54"], bGUTS[,"55"]))
+(cor <- cor.test(bGUTS[,"56"], bGUTS[,"57"]))
+(cor <- cor.test(bGUTS[,"11"], bGUTS[,"12"]))
+(cor <- cor.test(bGUTS[,"17"], bGUTS[,"44"]))
+```
+
+A summary of Pearson's correlations between replicates using only the 65 SNP control probes:
+
+![Correlation of SNP Control Probes](GUTS_Tables.002.png)
+
+The replicates correlate with one another as expected. 
+
+**11/12** and **17/44** are not biological replicates. 
+
+### Initial Technical Variation Investigation
+
+Sample relations mds plot used to see if major variability in the data is due to the chip the sample was placed on:
+
+```{r fig.height=4, fig.width=12}
+par(cex = 0.8)
+senCol <- as.numeric(factor(GUTSR$Sentrix_ID))
+plotSampleRelation(GUTSR, method = "mds", col = senCol)
+legend("bottomright", legend = levels(factor(GUTSR$Sentrix_ID)), bty = "n", fill = 1:nlevels(factor(GUTSR$Sentrix_ID)), cex = 0.8, ncol = 2)
+```
+
+There seems to be a chip bias present in this plot, specifically with chip **9259684092**.  
+
+Sample correlation heat map to observe batch effects:
+
+```{r fig.height=8, fig.width=12}
+BuPu <- colorRampPalette(brewer.pal(n = 9, "BuPu"))
+senCol <- as.character(as.numeric(factor(GUTSR$Sentrix_ID)))
+posCol <- as.character(as.numeric(factor(GUTSR$Sentrix_Position)))
+
+cor <- cor(betas(GUTSR), use = "pairwise.complete.obs")
+heatmap.2(cor, main = "Sample Correlation with Raw Samples", trace = "none", col = BuPu, dendrogram = "none", RowSideColors = senCol, cexRow = 0.8, ColSideColors = posCol, cexCol = 0.8, keysize = 1)
+legend("topleft", title = "Sentrix Position", bty = "n", legend = levels(factor(GUTSR$Sentrix_Position)), fill = 1:nlevels(factor(GUTSR$Sentrix_Position)), cex = 0.5, ncol = 1, inset = 0)
+legend("bottomleft", title = "Sentrix ID", bty = "n", legend = levels(factor(GUTSR$Sentrix_ID)), fill = 1:nlevels(factor(GUTSR$Sentrix_ID)), cex = 0.5, ncol = 1, inset = -0.01)
+```
+
+There doesn't seem to be any obvious outliers but there is a clustering of two main groups.
+ 
+## Data Normalization
+
+### Inter-sample Normalization (Quantile Normalization)
+
+Inter-sample normalization is performed because we expect the general global methylation distributions to be similar between samples. Performed by quantile normalization using functions supplied in the **lumi package**.
+
+```{r, eval=FALSE}
+GUTS.q <- lumiMethyN(GUTSR,method="quantile")
+save(GUTS.q, file = "GUTS.q.RData")
+```
+
+### Intra-sample Normalization (SWAN)
+
+Further, there are two probe types contained on the **Illumina 450K** platform which have differing distributions. As we will be performing analyses which uses data across probes we will have to normalize these two probe types to obtain similar distributions of beta values. 
+
+**Subset Within-Array Normalization**, or **SWAN** subsets the probes based on how many CpG sites are contained within the probes themselves and performs normalization to make the distributions equivalent within these subsets (Maksimovic *et. al* 2012). This method was chosen as two probe type designs were necessary to account for assumptions made about the methylation status of the CpG sites within the probes. Depending on how CpG dense the regions are, the probes must be designed in differing ways, however this will be confounded with the inherent biological differences between CpG dense versus CpG sparse regions within the genome (Bibikova *et. al* 2011). SWAN therefore provides a good balance between removing technical variation while preserving important biological variation confounded in the design.
+
+```{r eval = FALSE}
+target <- fData(QCdata(GUTS.2))$TargetID=="NEGATIVE"
+grn <- methylated(QCdata(GUTS.2))[target,] 
+red <- unmethylated(QCdata(GUTS.2))[target,] 
+bkg <- rowMeans(cbind(colMeans(grn),colMeans(red)))
+all(names(bkg)%in%sampleNames(GUTS.q)) 
+bkg <- bkg[sampleNames(GUTS.q)]
+source("SWAN scripts.R")
+load("nCpG all.RData")
+all(featureNames(GUTS.q)%in%names(nCpG.all))
+fData(GUTS.q)$nCpG <- nCpG.all[featureNames(GUTS.q)]
+all(names(bkg)==sampleNames(GUTS.q))
+GUTS.swan <- preprocessMSWAN(GUTS.q,bg=bkg)
+sum(is.na(exprs(GUTS.swan)))
+sum(is.na(unmethylated(GUTS.swan))) 
+sum(is.na(methylated(GUTS.swan))) 
+save(GUTS.swan, file = "GUTS.swan.RData")
+```
+
+Comparing the densities of raw data, inter-sample normalized (**quantile**) and inter/intra-sample normalized (**quantile** + **SWAN**) data:
+
+```{r eval = FALSE}
+load("/big_data/ngladish/GUTS/GUTSR.RData")
+load("/big_data/ngladish/GUTS/GUTS.q.RData")
+load("/big_data/ngladish/GUTS/GUTS.swan.RData")
+oPar<-par(mfrow=c(1,3))
+density(GUTSR,legend=NULL,main="Raw")
+density(GUTS.q,legend=NULL,main="Quantile")
+density(GUTS.swan,legend=NULL,main="Swan")
+par<-oPar
+```
+
+![GUTS Density.](GUTS_Density_raw_q_swan.png)
+
+The data progressively gets smoother and more uniform in its bimodal distribution. 
+
+Density plots seperated by probe type: 
+
+```{r eval = FALSE}
+type <- fData(GUTSR)$INFINIUM_DESIGN_TYPE
+before.betas <- betas(GUTSR)
+after.betas.Q <- betas(GUTS.q)
+after.betas.SWAN <- betas(GUTS.swan)
+oPar<-par(mfrow=c(1,1))
+plot(c(0,1),c(0,12),type="n", xlab="Beta values", ylab="Density", main="Beta Value") 
+lines(density(na.omit(before.betas)[type=="I",]),col=1,lty=1)
+lines(density(na.omit(before.betas)[type=="II",]),col=1,lty=2)
+lines(density(na.omit(after.betas.SWAN)[type=="I",]),col=2,lty=1)
+lines(density(na.omit(after.betas.Q)[type=="I",]),col=3,lty=1)
+lines(density(na.omit(after.betas.SWAN)[type=="II",]),col=2,lty=2)
+lines(density(na.omit(after.betas.Q)[type=="II",]),col=3,lty=2)
+legend("top", inset=.05, cex=0.5, bty = "n", c("Before Type 1","Before Type 2", "SWAN Type 1", "Quantile Type 1", "SWAN Type 2", "Quantile Type 2"), col=c(1,1, 2,3, 2, 3), lty=c(1,2,  1, 1, 2, 2), horiz=FALSE)
+par<-oPar
+```
+
+![GUTS Density by Probe.](GUTS_Density_probe_raw_q_swan.png)
+
+Quantile normalization doesn't change either probe-type distribution much. SWAN does make the two probe type distributions more similar to one another. 
+
+### Saving Normalized Data
+
+```{r, eval=FALSE} 
+GUTSN <- GUTS.swan
+GUTSN.2 <- GUTS.2
+save(GUTSN, file = "GUTSN.RData")
+save(GUTSN.2, file = "GUTSN.2.RData")
+```
+
+```{r eval = FALSE}
+load("/big_data/ngladish/GUTS/GUTSN.RData")
+```
+
+## Technical Variation Investigation
+
+I will now determine the presence of batch effects. Prinicple component analysis (PCA) along with correlation of variables to PCs will be used to determine this. 
+
+### Principal Component Analysis
+
+```{r eval = FALSE}
+GUTSNB <- betas(GUTSN)
+meta <- pData(GUTSN)
+PCA_full<-princomp(GUTSNB) # only using the 417619 complete rows for PCA
+Loadings<-as.data.frame(unclass(PCA_full$loadings))
+vars <- PCA_full$sdev^2
+Importance<-vars/sum(vars)
+
+#Restructure meta
+meta$Sentrix_ID<-as.factor(meta$Sentrix_ID)
+meta$Sentrix_Position<-as.factor(meta$Sentrix_Position)
+meta$race_c<-as.factor(meta$race_c)
+colnames(meta)
+colnames(meta_continuous)
+meta_categorical <- meta[, c(5,6,42)]  # input column numbers in meta that contain categorical variables
+meta_continuous <- meta[, c(12,40,28,30,33,41)]  # input column numbers in meta that contain continuous variables
+colnames(meta_categorical) <- c("Barcode", "Barcode Position", "Race")
+colnames(meta_continuous) <- c("Age", "Sexual Abuse", "Childhood Trauma\nQuestionnaire", "Childhood Trauma\nScreener", "Abuse Level","Abuse Continuous")
+
+
+
+heat_scree_plot<-function(Loadings, Importance){
+  adjust<-1-Importance[1]
+  pca_adjusted<-Importance[2:length(Importance)]/adjust
+  pca_df<-data.frame(adjusted_variance=pca_adjusted, PC=seq(1:length(pca_adjusted)))
+  
+  scree<-ggplot(pca_df[which(pca_df$PC<16),],aes(PC,adjusted_variance))+geom_bar(stat = "identity",color="black",fill="grey")+theme_bw()+
+        theme(axis.text = element_text(size =12),
+              axis.title = element_text(size =15),
+              plot.margin=unit(c(1.25,1.6,0.2,3),"cm"))+ylab("Adjusted Variance")+
+    scale_x_continuous(breaks = seq(1,15,1))
+  
+  
+  #### Heat
+  ## correlate meta with PCS
+  ## Run anova of each PC on each meta data variable
+
+
+ aov_PC_meta <- lapply(1:ncol(meta_categorical), function(covar) sapply(1:ncol(Loadings), 
+        function(PC) summary(aov(Loadings[, PC] ~ meta_categorical[, covar]))[[1]]$"Pr(>F)"[1]))
+  cor_PC_meta <- lapply(1:ncol(meta_continuous), function(covar) sapply(1:ncol(Loadings), 
+        function(PC) (cor.test(Loadings[, PC], as.numeric(meta_continuous[, 
+            covar]), alternative = "two.sided", method = "spearman", na.action = na.omit)$p.value)))
+ names(aov_PC_meta) <- colnames(meta_categorical)
+    names(cor_PC_meta) <- colnames(meta_continuous)
+    aov_PC_meta <- do.call(rbind, aov_PC_meta)
+    cor_PC_meta <- do.call(rbind, cor_PC_meta)
+    aov_PC_meta <- rbind(aov_PC_meta, cor_PC_meta)
+    aov_PC_meta <- as.data.frame(aov_PC_meta)
+  
+  #adjust
+  aov_PC_meta_adjust<-aov_PC_meta[,2:ncol(aov_PC_meta)]
+    
+  #reshape
+  avo<-aov_PC_meta_adjust[,1:15]
+  avo_heat_num<-apply(avo,2, as.numeric)
+  avo_heat<-as.data.frame(avo_heat_num)
+  avo_heat$meta<-rownames(avo)
+  avo_heat_melt<-melt(avo_heat, id=c("meta"))
+  
+  # cluster meta data
+  ord <- c(1,2,4,3,5,6,7,8,9)
+  meta_var_order<-unique(avo_heat_melt$meta)[rev(ord)]
+  avo_heat_melt$meta <- factor(avo_heat_melt$meta, levels = meta_var_order)
+  
+  # color if sig
+  avo_heat_melt$Pvalue<-sapply(1:nrow(avo_heat_melt), function(x) if(avo_heat_melt$value[x]<=0.001){"<=0.001"}else{
+    if(avo_heat_melt$value[x]<=0.01){"<=0.01"}else{
+      if(avo_heat_melt$value[x]<=0.05){"<=0.05"}else{">0.05"}}})
+  
+  heat<-ggplot(avo_heat_melt, aes(variable,meta, fill = Pvalue)) +
+  geom_tile(color = "black",size=0.5) +
+  theme_gray(8)+scale_fill_manual(values=c("#084594","#4292c6","#9ecae1","#deebf7"))+
+      theme(axis.text = element_text(size =10, color="black"),
+            axis.text.x = element_text(),
+          axis.title = element_text(size =15),
+          legend.text = element_text(size =14),
+          legend.title = element_text(size =12),
+          legend.position = c(1, 0.4), legend.justification = c(1,1),
+          plot.margin=unit(c(0,2.25,1,1),"cm"))+
+    xlab("Adjusted principal Component")+ylab(NULL)
+  
+  grid.arrange(scree, heat, ncol=1, widths = c(4, 1), heights = c(2, 4))
+}
+
+
+heat_scree_plot(Loadings, Importance)
+```
+
+![PC Cor Variables Raw.](RawPC.png)
+
+As can be seen, chip number and position contribute to a significant amount of variation. ComBat will be used to remove this.
+
+### Batch Variation Correction of Sentrix ID (ComBat)
+
+ComBat was produced at Harvard by Johnson, Rabinovic, and Li (2007) to correct for batch effects common to microarrays, specifically for studies with smaller batch sizes (<25). This method uses both parametric and non-parametric methods to remove batch effects. 
+
+```{r eval = FALSE}
+GUTSNC1 <- GUTSN
+test.bat<- ComBat(exprs(GUTSNC1), GUTSNC1$Sentrix_ID, mod = NULL)
+head(betas(GUTSNC1))
+exprs(GUTSNC1)<- test.bat
+head(betas(GUTSNC1)) 
+save (GUTSNC1, file = "GUTSNC1.RData")
+```
+
+```{r eval = FALSE}
+load("/big_data/ngladish/GUTS/GUTSNC1.RData")
+```
+
+### PCA After Batch Correction for Sentrix ID
+
+Re-Running PCA with the new data:
+
+```{r eval=FALSE}
+GUTSNB <- betas(GUTSNC1)
+meta <- pData(GUTSNC1)
+PCA_full<-princomp(GUTSNB) # only using the 417619 complete rows for PCA
+Loadings<-as.data.frame(unclass(PCA_full$loadings))
+vars <- PCA_full$sdev^2
+Importance<-vars/sum(vars)
+
+#Restructure meta
+meta$Sentrix_ID<-as.factor(meta$Sentrix_ID)
+meta$Sentrix_Position<-as.factor(meta$Sentrix_Position)
+meta$race_c<-as.factor(meta$race_c)
+colnames(meta)
+colnames(meta_continuous)
+meta_categorical <- meta[, c(5,6,42)]  # input column numbers in meta that contain categorical variables
+meta_continuous <- meta[, c(12,40,28,30,33,41)]  # input column numbers in meta that contain continuous variables
+colnames(meta_categorical) <- c("Barcode", "Barcode Position", "Race")
+colnames(meta_continuous) <- c("Age", "Sexual Abuse", "Childhood Trauma\nQuestionnaire", "Childhood Trauma\nScreener", "Abuse Level","Abuse Continuous")
+
+heat_scree_plot(Loadings, Importance)
+```
+
+![PC and Variable Cor after Combat](Com1.png)
+
+The batch effect due to Sentrix ID is removed but the effects due to sentrix position remain. ComBat is used again to account for sample position within the chip:
+
+### Batch Variation Correction of Sentrix Position (ComBat)
+
+```{r eval = FALSE}
+GUTSNC2 <- GUTSNC1
+head(pData(GUTSNC2))
+test.bat<- ComBat(exprs(GUTSNC2), GUTSNC2$Sentrix_Position, mod = NULL)
+head(betas(GUTSNC2))
+exprs(GUTSNC2)<- test.bat
+head(betas(GUTSNC2)) 
+save (GUTSNC2, file = "GUTSNC2.RData")
+```
+
+```{r eval = FALSE}
+load("/big_data/ngladish/GUTS/GUTSNC2.RData")
+```
+
+### PCA After Batch Correction for Sentrix Position and ID
+
+Re-Running PCA with the new data:
+
+```{r eval=FALSE}
+GUTSNB <- betas(GUTSNC2)
+meta <- pData(GUTSNC2)
+PCA_full<-princomp(GUTSNB) # only using the 417619 complete rows for PCA
+Loadings<-as.data.frame(unclass(PCA_full$loadings))
+vars <- PCA_full$sdev^2
+Importance<-vars/sum(vars)
+
+#Restructure meta
+meta$Sentrix_ID<-as.factor(meta$Sentrix_ID)
+meta$Sentrix_Position<-as.factor(meta$Sentrix_Position)
+meta$race_c<-as.factor(meta$race_c)
+colnames(meta_continuous)
+meta_categorical <- meta[, c(5,6,42)]  # input column numbers in meta that contain categorical variables
+meta_continuous <- meta[, c(12,40,28,30,33,41)]  # input column numbers in meta that contain continuous variables
+colnames(meta_categorical) <- c("Barcode", "Barcode Position", "Race")
+colnames(meta_continuous) <- c("Age", "Sexual Abuse", "Childhood Trauma\nQuestionnaire", "Childhood Trauma\nScreener", "Abuse Level","Abuse Continuous")
+heat_scree_plot(Loadings, Importance)
+```
+
+![PC and Variable Cor after Second Combat](Supplemental_1A_PCA_Com2.png)
+
+**Figure S1A. Batch effects removed and correlations between replicate samples increased after normalization and pre-processing of 450K Array DNA methylation data.** A. After probe filtering, quantile inter-sample normalization, SWAN intra-sample normalization and ComBat correction for batch effects there was no significant correlation between batch variables (Barcode and Barcode Position) and variation present in DNAm data as found using PCA. 
+
+Variation associated with chip number and position appear to be removed from the data. 
+
+## Replicate Correlation Throughout Normalization
+
+```{r eval=FALSE, echo=FALSE}
+replicates <- c("15", "rep-15", "22", "41", "33", "34", "35", "36", "37", "38", "39", "40", "42", "43", "44", "45", "46", "47", "48", "49", "50", "51", "52", "53", "54", "55", "56", "57")
+
+RGUTS <- GUTS[, sampleNames(GUTS)%in%replicates] # ORIGINAL
+RGUTSR <- GUTSR[, sampleNames(GUTSR)%in%replicates] # PROBE FILTERING
+RGUTSN <- GUTSN[, sampleNames(GUTSN)%in%replicates] # QUANTILE AND SWAN NORMALIZED
+RGUTSNC1 <- GUTSNC1[, sampleNames(GUTSNC1)%in%replicates] # COMBAT SENTRIX_ID
+RGUTSNC2 <- GUTSNC2[, sampleNames(GUTSNC2)%in%replicates] # COMBAT SENTRIX_POSITION
+
+
+B <- betas(RGUTS)
+BR <- betas(RGUTSR)
+BN <- betas(RGUTSN)
+bN1 <- betas(RGUTSNC1)
+bN2 <- betas(RGUTSNC2)
+
+corOR <- cor(B)
+(corOR["15", "rep-15"])
+(corOR["22", "41"])
+(corOR["33", "34"])
+(corOR["35", "36"])
+(corOR["37", "38"])
+(corOR["39", "40"])
+(corOR["42", "43"])
+(corOR["44", "45"])
+(corOR["46", "47"])
+(corOR["48", "49"])
+(corOR["50", "51"])
+(corOR["52", "53"])
+(corOR["54", "55"])
+(corOR["56", "57"])
+
+
+cor <- cor(BR)
+(cor["15", "rep-15"])
+(cor["22", "41"])
+(cor["33", "34"])
+(cor["35", "36"])
+(cor["37", "38"])
+(cor["39", "40"])
+(cor["42", "43"])
+(cor["44", "45"])
+(cor["46", "47"])
+(cor["48", "49"])
+(cor["50", "51"])
+(cor["52", "53"])
+(cor["54", "55"])
+(cor["56", "57"])
+
+corN <- cor(BN)
+(corN["15", "rep-15"])
+(corN["22", "41"])
+(corN["33", "34"])
+(corN["35", "36"])
+(corN["37", "38"])
+(corN["39", "40"])
+(corN["42", "43"])
+(corN["44", "45"])
+(corN["46", "47"])
+(corN["48", "49"])
+(corN["50", "51"])
+(corN["52", "53"])
+(corN["54", "55"])
+(corN["56", "57"])
+
+corN1 <- cor(bN1)
+(corN1["15", "rep-15"])
+(corN1["22", "41"])
+(corN1["33", "34"])
+(corN1["35", "36"])
+(corN1["37", "38"])
+(corN1["39", "40"])
+(corN1["42", "43"])
+(corN1["44", "45"])
+(corN1["46", "47"])
+(corN1["48", "49"])
+(corN1["50", "51"])
+(corN1["52", "53"])
+(corN1["54", "55"])
+(corN1["56", "57"])
+
+corN2 <- cor(bN2)
+(corN2["15", "rep-15"])
+(corN2["22", "41"])
+(corN2["33", "34"])
+(corN2["35", "36"])
+(corN2["37", "38"])
+(corN2["39", "40"])
+(corN2["42", "43"])
+(corN2["44", "45"])
+(corN2["46", "47"])
+(corN2["48", "49"])
+(corN2["50", "51"])
+(corN2["52", "53"])
+(corN2["54", "55"])
+(corN2["56", "57"])
+```
+
+![Replicate Correlations](GUTS_rep_cor_norm.png)
+
+Plot of correlations between replicates throughout normalization:
+
+```{r eval = FALSE}
+Rep_Norm <- read.csv(file = "Rep_Cor_Norm.csv")
+Rep_Norm_melt <- melt(Rep_Norm, id = "Replicate_Pair")
+
+ggplot(Rep_Norm_melt, aes(variable, value, color = Replicate_Pair, group = Replicate_Pair)) +
+  geom_point() +
+  geom_line() +
+  xlab("Pre-Processing and Normalization Step") +
+  ylab("Spearman's Correlation (rho)") +
+  scale_x_discrete(labels = c("Raw Data", "Probe Filter", "Normalization", "ComBat 1", "Combat 2")) +
+  scale_color_discrete(name="Replicate Pair") +
+  theme_bw(base_size = 10)
+
+```
+
+![Supp. 1B Replicate Correlation Plot](Supplemental_1B_Rep_Corr.png)
+
+**Figure S1B. Batch effects removed and correlations between replicate samples increased after normalization and pre-processing of 450K Array DNA methylation data.** B. Correlation measurements between replicate samples throughout normalization. All replicates display the highest correlations by the end of the pipeline.
+
+## Replicate Removal
+
+Removing the technical replicate: 
+
+```{r eval = FALSE}
+replicates <- c("rep-15")
+GUTSNC <- GUTSNC2[, !sampleNames(GUTSNC2)%in%replicates]
+GUTSNC.2 <- GUTS.2[, !sampleNames(GUTS.2)%in%replicates]
+save (GUTSNC, file = "GUTSNC.RData")
+save (GUTSNC.2, file = "GUTSNC.2.RData")
+```
+
+There are now **47** samples remaining. Of those **13** are biological replicates.
+
+In order to perform analysis I will remove, at random, the biological replicates.
+
+```{r eval = FALSE}
+replicates <- c("33", "22", "36", "38", "40", "42", "44", "47", "49", "51", "52", "55", "57")
+GUTSNCR <- GUTSNC[, !sampleNames(GUTSNC)%in%replicates]
+save(GUTSNCR, file = "GUTSNCR.RData")
+```
+
+# References:
+
+Bibikova, M., Barnes, B., Tsan, C., Ho, V., Klotzle, B., Le, J. M., Zhang, Z., Schroth, G. P., Gunderson, K. L., Fan, J. B. and Shen, R. (2011). High density DNA methylation array with single CpG site resolution. Genomics, 98(4), 288–295.
+
+Du, P., Kibbe, W.A., Lin and S.M. (2008). “lumi: a pipeline for processing Illumina microarray.” Bioinformatics.
+
+Johnson, W.E., Rabinovic, A., and Li, C. (2007). Adjusting batch effects in microarray expression data using Empirical Bayes methods. Biostatistics 8(1):118-127.
+
+Maksimovic, J., Gordon, L. and Oshlack, A. (2012) SWAN: Subset-quantle within array normaliza:on for illumina infinium HumanMethylation450 BeadChips. Genome Biol. 13, R44.
+
+Price, M. E., Cotton, A. M., Lam, L. L., Farré, P., Emberly, E., Brown, C. J., Robinson, W. P., Kobor, M. S. (2013). Additional annotation enhances potential for biologically-relevant analysis of the Illumina Infinium HumanMethylation450 BeadChip array. Epigenetics & Chromatin, 6(1), 4.
