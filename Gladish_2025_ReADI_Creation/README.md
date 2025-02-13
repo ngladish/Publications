@@ -4,6 +4,6 @@ This repository holds the scripts used to produce the manuscript "A comparison o
 
 Below provides a description for each of the supplementary files mentioned in the manuscript and hosted here as self-contained HTML files that can be viewed as fully rendered webpages by clicking the links below:
 
-- [📄 Supp_File1_ReADI_2022_Creation_v2](https://ngladish.github.io/Publications/Gladish_2025_ReADI_Creation/Supp_File1_ReADI_2022_Creation_v2.html)
-- [📄 File 2](https://htmlpreview.github.io/?https://raw.githubusercontent.com/your-username/repository-name/main/file2.html)
-- [📄 File 3](https://htmlpreview.github.io/?https://raw.githubusercontent.com/your-username/repository-name/main/file3.html)
+- [📄 Supp_File1_ReADI_2022_Creation_v2](https://ngladish.github.io/Publications/Gladish_2025_ReADI_Creation/Supp_File1_ReADI_2022_Creation_v2.html) covers production of the ReADI using the 2022 5-year AFC US Census data.
+- [📄 Supp_File2_ReADI_2015_Creation_v2](https://ngladish.github.io/Publications/Gladish_2025_ReADI_Creation/Supp_File2_ReADI_2015_Creation_v2.html) covers production of the ReADI using the 2015 5-year AFC US Census data.
+- [📄 Supp_File3_Index_2022_Creation_v2](https://ngladish.github.io/Publications/Gladish_2025_ReADI_Creation/Supp_File3_Index_2022_Creation_v2.html) covers compilation of several deprivation indices that were reverse engineered by us (SDI, NSS7, and FDep) and downloaded from the creators site (SVI). All were produced using the 2022 5-year AFC US Census data.
