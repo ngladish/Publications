@@ -1,10 +1,61 @@
-# Reproducible Area Deprivation Index (ReADI) Manuscript Code
+# Estimation of Mortality via the Neighborhood Atlas and Reproducible Area Deprivation Indices
 
-This repository holds the scripts used to produce the manuscript "A comparison of mortality prediction between the Neighborhood Atlas Area Deprivation Index and the Reproducible Area Deprivation Index", authored by Dr. Nicole Gladish, Dr. David Rehkopf, and Dr. Robert Phillips. The products of this manuscript are hosted on [Stanford servers](https://sepi.sites.stanford.edu/).
+**Manuscript:** Estimation of Mortality via the Neighborhood Atlas and Reproducible Area Deprivation Indices  
+**Journal:** *JAMA Network Open* (Original Investigation)  
+**Status:** Accepted; embargoed until **December 24, 2025**  
+**Authors:** Nicole Gladish, PhD; Robert L Phillips, MD, MSPH; David H Rehkopf, ScD, MPH
 
-Below provides a description for each of the supplementary files mentioned in the manuscript and hosted here as self-contained HTML files that can be viewed as fully rendered webpages by clicking the links below:
+> **Embargo note:**  
+> This repository is private until the manuscript embargo lifts. After publication, this README and code will be made public. Do **not** redistribute files from this repo prior to the official publication date.
 
-- [📄 Supp_File1_ReADI_2022_Creation_v2](https://ngladish.github.io/Publications/Gladish_2025_ReADI_Creation/Supp_File1_ReADI_2022_Creation_v2.html) covers production of the ReADI using the 2022 5-year AFC US Census data.
-- [📄 Supp_File2_ReADI_2015_Creation_v2](https://ngladish.github.io/Publications/Gladish_2025_ReADI_Creation/Supp_File2_ReADI_2015_Creation_v2.html) covers production of the ReADI using the 2015 5-year AFC US Census data.
-- [📄 Supp_File3_Index_2022_Creation_v2](https://ngladish.github.io/Publications/Gladish_2025_ReADI_Creation/Supp_File3_Index_2022_Creation_v2.html) covers compilation of several deprivation indices that were reverse engineered by us (SDI, NSS7, and FDep) and downloaded from the creators site (SVI). All were produced using the 2022 5-year AFC US Census data.
-- [📄 Supp_File4_ReADI_Analysis_v2](https://ngladish.github.io/Publications/Gladish_2025_ReADI_Creation/Supp_File4_ReADI_Analysis_v2.html) covers all of the analysis code used to reproduce all figures in the manuscript.
+---
+## 1. Repository purpose
+
+This repository contains the **analysis code, minimal data derivatives, and documentation** used to reproduce the results for:
+
+> **Gladish N, et al.** *Estimation of Mortality via the Neighborhood Atlas and Reproducible Area Deprivation Indices.* JAMA Network Open. 2025;X(X):eXXXXX.
+
+This repo **does _not_ contain full deprivation index construction code**. Each index (ReADI, NA-ADI, SDI, SVI, NSS7, FDEP) is maintained in its own dedicated repository. Here we:
+
+- Import pre-computed deprivation indices from those repos/datasets
+- Merge them with mortality and contextual data
+- Run the statistical analyses and generate tables/figures for the paper
+
+The goal is that anyone with access to the underlying indices and input data can **fully reproduce all published results**.
+
+---
+
+## 2. Background (short)
+
+The Neighborhood Atlas Area Deprivation Index (NA-ADI) is widely used in health policy research and incorporated into Medicare payment models such as the Accountable Care Organization Realizing Equity, Access, and Community Health (ACO REACH) Model. However, multiple independent groups have identified calculation errors in the NA-ADI that distort deprivation estimates and risk inequitable funding allocation and outcome adjustment.
+
+In this study, we:
+
+- Compare mortality estimation using the NA-ADI against a **Reproducible Area Deprivation Index (ReADI)** and other deprivation measures
+- Quantify how index choice and specification affect mortality risk estimation and potential policy implications
+
+---
+
+## 3. Deprivation indices used in this repository
+
+This repo **consumes** the following indices; it does not build them from raw data.
+
+Update the links below once your index repos are live.
+
+| Index                         | Year(s)| Notes                                                                 |
+|------------------------------|---------|-----------------------------------------------------------------------|
+| [Reproducible ADI (ReADI)](https://github.com/ngladish/ReADI/tree/main/2011-2015)     | 2015    | Fully reproducible ADI; code and tract-level outputs maintained there |
+| [Reproducible ADI (ReADI)](https://github.com/ngladish/ReADI/tree/main/2018-2022)     | 2022    | Updated ReADI for 2022                                                |
+| [Neighborhood Atlas ADI (NA-ADI)](https://www.neighborhoodatlas.medicine.wisc.edu/) | 2022 | NA-ADI as recovered from the Neighborhood Atlas website    |
+| [Neighborhood Atlas ADI (NA-ADI)](https://www.neighborhoodatlas.medicine.wisc.edu/) | 2015 | NA-ADI version provided directly by the Neighborhood Atlas team       |
+| Social Deprivation Index (SDI)  | 2022 | SDI 2022, constructed by Gladish; updated annually                |
+| [Social Vulnerability Index (SVI)](https://www.atsdr.cdc.gov/place-health/php/svi/svi-data-documentation-download.html) | 2022 |CDC SVI, downloaded from official website; processed in that repo     |
+| NSS7 (Neighborhood SES index)   | 2022 |Seven-component neighborhood SES index; constructed by Gladish        |
+| French Deprivation Index (FDEP) | 2022 | FDEP adaptation; constructed by Gladish                               |
+| Other indices (future updates)  | various | Central repo aggregating other deprivation indices and updates        |
+
+> **Important:**  
+> - This analysis repo assumes the above indices already exist as tract-/ZCTA-level datasets (e.g., `.rds` or `.csv` files).  
+> - Users must clone or otherwise obtain those repos/data and adjust file paths accordingly.
+
+---
