@@ -1,0 +1,66 @@
+2015 Block Group ADI Files v 3.0
+These files contain a linkage between the Census block group and the ADI score. The file contains four relevant fields:
+
+GISJOIN: Key linkage field to the block group shapefile served by NHGIS
+FIPS: The block group Census ID
+ADI_NATRANK: National percentile of block group ADI score
+ADI_STATERNK: State-specific decile of block group ADI score
+
+DO NOT USE EXCEL TO OPEN THE FILES! - Excel has a record limit of roughly 1.4 million and does not warn you if you exceed the limit. Truncation of the data may occur!
+
+Upon download of the block group ADI files, please verify the record number count in your data against the chksum record number below:
+State_full	#_Records	File_size_KB
+Alaska			534		23
+Alabama			3438		144
+Arkansas			2147		91
+Arizona			4178		176
+California		23212		994
+Colorado			3532		152
+Connecticut		2585		111
+Washington D.C.		450		19
+Delaware			574		25
+Florida			11442		493
+Georgia			5533		239
+Hawaii			875		38
+Iowa			2630		113
+Idaho			963		42
+Illinois			9691		417
+Indiana			4814		208
+Kansas			2351		101
+Kentucky			3285		142
+Louisiana		3471		150
+Massachusetts		4985		214
+Maryland			3926		169
+Maine			1086		47
+Michigan			8205		358
+Minnesota		4111		181
+Missouri			4506		199
+Mississippi		2164		96
+Montana			842		37
+North Carolina		6155		272
+North Dakota		572		25
+Nebraska			1633		72
+New Hampshire		922		41
+New Jersey		6320		278
+New Mexico		1449		64
+Nevada			1836		81
+New York			15463		679
+Ohio			9238		408
+Oklahoma			2965		131
+Oregon			2634		116
+Pennsylvania		9740		430
+Puerto Rico		2594		122
+Rhode Island		815		36
+South Carolina		3059		135
+South Dakota		654		29
+Tennessee		4125		182
+Texas			15811		698
+Utah			1690		75
+Virginia			5332		235
+Vermont			522		23
+Washington		4783		211
+Wisconsin		4489		198
+West Virginia		1592		70
+Wyoming			410		18
+United States		220333		9824
+
