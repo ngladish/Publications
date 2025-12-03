@@ -797,6 +797,7 @@ Readers who require more detail on the construction of SVI (including exact Cens
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1149">Show Code</button>
   <div id="code1149" class="collapse">
 ```{r, eval = F}
+NA_ADI_CBG_2022 <- read.csv("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/Other Indices/SVI_2022_US_county.csv", colClasses = c(FIPS = "character"), stringsAsFactors = FALSE)
 SVI_2022_C <- read.csv("SVI_2022_US_county.csv")
 SVI_2022_C$GEOID <- ifelse(nchar(SVI_2022_C$FIPS) == 4, paste(0, SVI_2022_C$FIPS, sep=""), SVI_2022_C$FIPS)
 save(SVI_2022_C, file = "SVI_2022_C.RData")
