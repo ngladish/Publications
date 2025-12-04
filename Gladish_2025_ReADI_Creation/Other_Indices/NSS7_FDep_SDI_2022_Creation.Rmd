@@ -797,9 +797,10 @@ Readers who require more detail on the construction of SVI (including exact Cens
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1149">Show Code</button>
   <div id="code1149" class="collapse">
 ```{r, eval = F}
-NA_ADI_CBG_2022 <- read.csv("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/Other Indices/SVI_2022_US_county.csv", colClasses = c(FIPS = "character"), stringsAsFactors = FALSE)
-SVI_2022_C <- read.csv("SVI_2022_US_county.csv")
-SVI_2022_C$GEOID <- ifelse(nchar(SVI_2022_C$FIPS) == 4, paste(0, SVI_2022_C$FIPS, sep=""), SVI_2022_C$FIPS)
+SVI_2022_C <- read.csv("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/Other_Indices/SVI_2022_US_county.csv", colClasses = c(FIPS = "character"), stringsAsFactors = FALSE)
+stopifnot(all(nchar(SVI_2022_C$FIPS) == 5), 
+length(unique(SVI_2022_C$FIPS)) == nrow(SVI_2022_C))
+SVI_2022_C$GEOID <- SVI_2022_C$FIPS
 save(SVI_2022_C, file = "SVI_2022_C.RData")
 ```
   </div>
@@ -815,8 +816,10 @@ save(SVI_2022_C, file = "SVI_2022_C.RData")
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1064">Show Code</button>
   <div id="code1064" class="collapse">
 ```{r, eval = F}
-SVI_2022_CT <- read.csv("SVI_2022_US.csv")
-SVI_2022_CT$GEOID <- ifelse(nchar(SVI_2022_CT$FIPS) == 10, paste(0, SVI_2022_CT$FIPS, sep=""), SVI_2022_CT$FIPS)
+SVI_2022_CT <- read.csv("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/Other_Indices/SVI_2022_US.csv", colClasses = c(FIPS = "character"), stringsAsFactors = FALSE)
+stopifnot(all(nchar(SVI_2022_CT$FIPS) == 11), 
+length(unique(SVI_2022_CT$FIPS)) == nrow(SVI_2022_CT))
+SVI_2022_CT$GEOID <- SVI_2022_CT$FIPS
 save(SVI_2022_CT, file = "SVI_2022_CT.RData")
 ```
   </div>
@@ -875,7 +878,7 @@ save(SVI_2022_CBG, file = "SVI_2022_CBG.RData")
 
 Information for this measure can be found from the [Graham-Center site](https://www.graham-center.org/maps-data-tools/social-deprivation-index.html)
 
-The Social Deprivation Index measures were initially developed by @Butler2013 using 2005–2009 American Community Survey (ACS) 5-year estimates and calculated at the Primary Care Service Areas (PCSA).  The index and the associated measures are updated each year with more recent data as soon as the ACS data becomes available. The SDI and the measures are available for the following years: ACS data (5-year estimates from 2008-2012, 2011-2015, 2012-2016, 2013-2017, 2014-2018, and 2015-2019) and 2) using additional geographies: counties, census tract, Zip Code Tabulation Areas (ZCTA), and PCSAs. 
+The Social Deprivation Index measures were initially developed by [Butler et al.; 2012](https://onlinelibrary.wiley.com/doi/10.1111/j.1475-6773.2012.01449.x) and [Phillips et al.; 2016](https://www.healthaffairs.org/doi/10.1377/hlthaff.2016.0709) using 2005–2009 American Community Survey (ACS) 5-year estimates and calculated at the Primary Care Service Areas (PCSA).  The index and the associated measures are updated each year with more recent data as soon as the ACS data becomes available. The SDI and the measures are available for the following years: ACS data (5-year estimates from 2008-2012, 2011-2015, 2012-2016, 2013-2017, 2014-2018, and 2015-2019) and 2) using additional geographies: counties, census tract, Zip Code Tabulation Areas (ZCTA), and PCSAs. 
 
 The final SDI is a composite measure of seven demographic characteristics collected in the American Community Survey (ACS): 
 
@@ -983,7 +986,7 @@ SDI_2022_Loadings <- as.data.frame(loadings(sdi.fa)[])
 colnames(SDI_2022_Loadings) <- "CBG"
 SDI_2022_Loadings$Vars <- rownames(SDI_2022_Loadings)
 SDI_2022_Loadings <- SDI_2022_Loadings[,c("Vars", "CBG")]
-save(SDI_2022_Loadings, file = "~/Desktop/SDVI/SDI/SDI 2022/SDI_2022_Loadings.RData")
+save(SDI_2022_Loadings, file = "SDI_2022_Loadings.RData")
 
 # Pulling the raw scores as the raw SDI, producing the SDI on a scale of 0-100
 SDI_2022_FA_SC <- as.data.frame(sdi.fa$scores)
@@ -992,7 +995,7 @@ identical(rownames(SDI_2022_FA_SC), SDI_2022_CBG$GEOID)
 SDI_2022_FA_SC$SDI_2022 <- xtile(SDI_2022_FA_SC$SDI_2022_Raw, n = 100, wt = SDI_2022_CBG$B01003_001)
 SDI_2022_FA_SC$GEOID <- rownames(SDI_2022_FA_SC)
 SDI_2022_CBG <- plyr::join(SDI_2022_CBG, SDI_2022_FA_SC, by = "GEOID")
-save(SDI_2022_CBG, file = "~/Desktop/SDVI/SDI/SDI 2022/SDI_2022_CBG.RData")
+save(SDI_2022_CBG, file = "SDI_2022_CBG.RData")
 ```
   </div>
 </div>
@@ -1056,7 +1059,7 @@ colSums(is.na(SDI_2022_CT)) # There are 0 NAs
 SDI_2022_CT[is.na(SDI_2022_CT)] <- 0
 colSums(is.na(SDI_2022_CT))
 SDI_2022_CT_RawVars <- SDI_2022_CT
-save(SDI_2022_CT_RawVars, file = "~/Desktop/SDVI/SDI/SDI 2022/SDI_2022_CT_RawVars.RData")
+save(SDI_2022_CT_RawVars, file = "SDI_2022_CT_RawVars.RData")
 
 # Transforming the variables into percentiles
 SDI_short <- SDI_2022_CT[, c("GEOID", "POV", "NOHSDP", "NONEMP", "RENT", "CROWD", "SNGPNT", "NOVEH")]
@@ -1085,7 +1088,7 @@ identical(rownames(SDI_2022_FA_SC), SDI_2022_CT$GEOID)
 SDI_2022_FA_SC$SDI_2022 <- xtile(SDI_2022_FA_SC$SDI_2022_Raw, n = 100, wt = SDI_2022_CT$B01003_001)
 SDI_2022_FA_SC$GEOID <- rownames(SDI_2022_FA_SC)
 SDI_2022_CT <- plyr::join(SDI_2022_CT, SDI_2022_FA_SC, by = "GEOID")
-save(SDI_2022_CT, file = "~/Desktop/SDVI/SDI/SDI 2022/SDI_2022_CT.RData")
+save(SDI_2022_CT, file = "SDI_2022_CT.RData")
 ```
   </div>
 </div>
