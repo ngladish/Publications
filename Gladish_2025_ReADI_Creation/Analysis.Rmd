@@ -298,12 +298,6 @@ if (any(is.na(NA_ADI_C_2022$NA_ADI))) {
   warning("Some county-level NA-ADI values are NA after aggregation.")
 }
 save(NA_ADI_C_2022, file = "NA_ADI_C_2022.RData")
-
-
-old <- NA_ADI_C_2022
-rm(NA_ADI_C_2022)
-
-identical(new$NA_ADI, old$ADI)
 ```
   </div>
 </div>
@@ -1227,7 +1221,6 @@ paste(round(r2, 3), " [95% CI, ", round(ci[[1]], 3), "-", round(ci[[3]], 3), "]"
 # Weight ranges
 round(range(ADI_2022_Wt$NA_ADI), 3)
 round(range(ADI_2022_Wt$CBG, ADI_2022_Wt$CT, ADI_2022_Wt$C), 3)
-round(range(ReADI_2022_Wt$CBG, ReADI_2022_Wt$CT, ReADI_2022_Wt$C), 3)
 
 ## RMSE
 rmse_obs <- Metrics::rmse(ADI_2022_Wt$CBG, ADI_2022_Wt$NA_ADI)
@@ -1313,8 +1306,6 @@ The printed output from this chunk provides the R-squared and RMSE ranges (with 
 ```{r, eval = F}
 load("ADI_Cor_L.RData")
 
-## Summary stats
-
 ### ReADI
 #### Linear regression
 r2_cbg <- summary(lm(ReADI_Cor ~ ReADI_Loadings, data = ADI_Cor_L[ADI_Cor_L$Geo == "CBG", ]))$r.squared
@@ -1358,7 +1349,7 @@ cil <- max(ci_cbg[4], ci_ct[4], ci_c[4])
 ciu <- max(ci_cbg[5], ci_ct[5], ci_c[5])
 paste(round(rsme,3), " [95% CI, ", round(cil, 3), "-", round(ciu, 3), "]", sep = "")
 
-## For the figure:
+## For Figure 2A:
 paste("R^2 = ", round(r2_cbg,3), " (RMSE, ", round(rmse_cbg, 3), ")", sep = "")
 paste("R^2 = ", round(r2_ct,3), " (RMSE, ", round(rmse_ct, 3), ")", sep = "")
 paste("R^2 = ", round(r2_c,3), " (RMSE, ", round(rmse_c, 3), ")", sep = "")
@@ -1414,7 +1405,7 @@ cil <- max(ci_cbg[4], ci_ct[4], ci_c[4])
 ciu <- max(ci_cbg[5], ci_ct[5], ci_c[5])
 paste(round(rsme,3), " [95% CI, ", round(cil, 3), "-", round(ciu, 3), "]", sep = "")
 
-## For the figure:
+## For Figure 2B:
 paste("R^2 = ", round(r2_cbg,3), " (RMSE, ", round(rmse_cbg, 3), ")", sep = "")
 paste("R^2 = ", round(r2_ct,3), " (RMSE, ", round(rmse_ct, 3), ")", sep = "")
 paste("R^2 = ", round(r2_c,3), " (RMSE, ", round(rmse_c, 3), ")", sep = "")
@@ -1522,19 +1513,19 @@ load("ADI_C_Data.RData")
 
 sdvi_names <- c("Reproducible\nADI", "Neighborhood\n Atlas ADI", "French\nDeprivation Index", "Social\nDeprivation Index", "Social\nVulnerability Index", "Neighborhood\nStress Score")
 
-CBG <- ADI_CBG_Data[, c("GEOID", "ReADI_xtile", "NA_ADI")]
+CBG <- ADI_CBG_Data[, c("GEOID", "ReADI_CBG_NR", "NA_ADI")]
 SDVI_CBG_2022 <- SDVI_CBG_2022[, c("GEOID", "FDep", "SDI", "SVI", "NSS7")]
 CBG <- plyr::join(CBG, SDVI_CBG_2022, by = "GEOID", type = "left")
 CBG$GEOID <- NULL
 colnames(CBG) <- sdvi_names
 
-CT <- ADI_CT_Data[, c("GEOID", "ReADI_xtile", "NA_ADI")]
+CT <- ADI_CT_Data[, c("GEOID", "ReADI_CT_NR", "NA_ADI")]
 SDVI_CT_2022 <- SDVI_CT_2022[, c("GEOID", "FDep", "SDI", "SVI", "NSS7")]
 CT <- plyr::join(CT, SDVI_CT_2022, by = "GEOID", type = "left")
 CT$GEOID <- NULL
 colnames(CT) <- sdvi_names
 
-C <- ADI_C_Data[, c("GEOID", "ReADI_xtile", "NA_ADI")]
+C <- ADI_C_Data[, c("GEOID", "ReADI_C_NR", "NA_ADI")]
 SDVI_C_2022 <- SDVI_C_2022[, c("GEOID", "FDep", "SDI", "SVI", "NSS7")]
 C <- plyr::join(C, SDVI_C_2022, by = "GEOID", type = "left")
 C$GEOID <- NULL
@@ -1825,27 +1816,29 @@ welch <- t.test(Diff_NA_ReADI ~ urban_label, data = ADI_CBG_Data)$statistic
 cil <- t.test(Diff_NA_ReADI ~ urban_label, data = ADI_CBG_Data)$conf.int[1]
 ciu <- t.test(Diff_NA_ReADI ~ urban_label, data = ADI_CBG_Data)$conf.int[2]
 pval <- ifelse(t.test(Diff_NA_ReADI ~ urban_label, data = ADI_CBG_Data)$p.value < 0.001, 0.001, t.test(Diff_NA_ReADI ~ urban_label, data = ADI_CBG_Data)$conf.int[2])
-paste("(rural mean, ", round(rural_mean, 2), " [SD, ", round(rural_sd, 2), "]; urban mean, ", round(urban_mean, 4), " [SD, ", round(urban_sd, 2), "]; Welch t, ", round(welch, 3), " [95% CI, ", round(cil, 2), "-", round(ciu, 2), "]; P <", pval, "; 95% CI, ", sep = "")
+paste("(rural mean, ", round(rural_mean, 2), " [SD, ", round(rural_sd, 2), "]; urban mean, ", round(urban_mean, 4), " [SD, ", round(urban_sd, 2), "]; Welch t, ", round(welch, 1), " [95% CI, ", round(cil, 2), "-", round(ciu, 2), "]; P <", pval, ")", sep = "")
 
 # Cohen d ############################################################## 
 ADI_CBG_Data <- ADI_CBG_Data[!is.na(ADI_CBG_Data$Diff_NA_ReADI),]
 ADI_CT_Data <- ADI_CT_Data[!is.na(ADI_CT_Data$Diff_NA_ReADI),]
-round(cohens_d(Diff_NA_ReADI ~ urban_label, data = ADI_CBG_Data, ci = 0.95)$Cohens_d, 2)
-round(cohens_d(Diff_NA_ReADI ~ urban_label, data = ADI_CT_Data, ci = 0.95)$Cohens_d, 2)
+cd <- round(cohens_d(Diff_NA_ReADI ~ urban_label, data = ADI_CBG_Data, ci = 0.95)$Cohens_d, 2)
+paste("(Cohen d = ", round(cd, 2), ")", sep = "")
+cd <- round(cohens_d(Diff_NA_ReADI ~ urban_label, data = ADI_CT_Data, ci = 0.95)$Cohens_d, 2)
+paste("(Cohen d = ", round(cd, 2), ")", sep = "")
 
 # Quantile regression ############################################################## 
 
-qr_model <- rq(Diff_NA_ReADI ~ urban_label, data = ADI_CT_Data, tau = c(0.25, 0.5, 0.75))
+qr_model <- rq(Diff_NA_ReADI ~ urban_label, data = ADI_CT_Data, tau = c(0.25, 0.5, 0.75), method = "fn")
 t25 <- qr_model$coefficients["urban_labelUrban", "tau= 0.25"]
 t50 <- qr_model$coefficients["urban_labelUrban", "tau= 0.50"]
 t75 <- qr_model$coefficients["urban_labelUrban", "tau= 0.75"]
-paste("t(25%) = ", t25, "; t(50%) = ", t50, "; t(75%) = ", t75, sep = "")
+paste("t(25%) = ", round(t25, 1), "; t(50%) = ", round(t50, 1), "; t(75%) = ", round(t75, 1), sep = "")
 
-qr_model <- rq(Diff_NA_ReADI ~ urban_label, data = ADI_CBG_Data, tau = c(0.25, 0.5, 0.75))
+qr_model <- rq(Diff_NA_ReADI ~ urban_label, data = ADI_CBG_Data, tau = c(0.25, 0.5, 0.75), method = "fn")
 t25 <- qr_model$coefficients["urban_labelUrban", "tau= 0.25"]
 t50 <- qr_model$coefficients["urban_labelUrban", "tau= 0.50"]
 t75 <- qr_model$coefficients["urban_labelUrban", "tau= 0.75"]
-paste("t(25%) = ", t25, "; t(50%) = ", t50, "; t(75%) = ", t75, sep = "")
+paste("t(25%) = ", round(t25, 1), "; t(50%) = ", round(t50, 1), "; t(75%) = ", round(t75, 1), sep = "")
 
 ## Regional Summary
 
@@ -2097,16 +2090,7 @@ dat <- ADI_Mortality_Data %>%
   mutate(NA_ReADI_2015_Diff = NA_ADI_CT_NR - ReADI_CT_NR) %>%
   plyr::join(Pop_Total_2015, by = "GEOID") %>%
   tidyr::drop_na(Life_Expectancy, NA_ADI_CT_NR, ReADI_CT_NR, Pop_Total_2015) %>%
-  mutate(
-    Pop_Total_2015 = log(Pop_Total_2015),
-    abs_diff       = abs(NA_ReADI_2015_Diff),
-    bin            = cut(
-      abs_diff,
-      breaks = c(0, 10, 20, 40, 100),   # 40–100 bin; if max ever >100, change back to Inf
-      labels = c("0–9","10–19","20–39","40–100"),
-      right  = FALSE
-    )
-  )
+  mutate(Pop_Total_2015 = log(Pop_Total_2015), abs_diff = abs(NA_ReADI_2015_Diff), bin = cut(abs_diff, breaks = c(0, 10, 20, 40, 100), labels = c("0–9","10–19","20–39","40–100"), right  = FALSE))
 
 ## R2 + CI for each model (same logic as before)
 r2_ci <- function(model, adi_var) {
@@ -2114,31 +2098,17 @@ r2_ci <- function(model, adi_var) {
   R2 <- s$r.squared
   n  <- stats::nobs(model)
   p  <- length(coef(model)) - 1
-  ci <- MBESS::ci.R2(
-    R2         = R2,
-    df.1       = p,
-    df.2       = n - p - 1,
-    conf.level = 0.95
-  )
+  ci <- MBESS::ci.R2(R2 = R2, df.1 = p, df.2 = n - p - 1, conf.level = 0.95)
   cs <- coef(s)
-  if (adi_var %in% rownames(cs)) {
-    pval <- cs[adi_var, "Pr(>|t|)"]
+  if (adi_var %in% rownames(cs)) {pval <- cs[adi_var, "Pr(>|t|)"]
   } else {
     pval <- if (nrow(cs) >= 2) cs[2, "Pr(>|t|)"] else NA_real_
   }
-  c(
-    R2  = R2,
-    LCL = ci$Lower.Conf.Limit.R2,
-    UCL = ci$Upper.Conf.Limit.R2,
-    n   = n,
-    p   = pval
-  )
-}
+  c(R2 = R2, LCL = ci$Lower.Conf.Limit.R2, UCL = ci$Upper.Conf.Limit.R2, n = n, p = pval
+  )}
 
 ## unadjusted models: Life_Expectancy ~ ADI
-fit_one <- function(df, adi_var) {
-  stats::lm(stats::as.formula(paste("Life_Expectancy ~", adi_var)), data = df)
-}
+fit_one <- function(df, adi_var) {stats::lm(stats::as.formula(paste("Life_Expectancy ~", adi_var)), data = df)}
 
 results <- as.data.frame(
   dat %>%
@@ -2157,21 +2127,14 @@ results <- as.data.frame(
         p   = c(c_na["p"],   c_re["p"])   |> as.numeric()
       )
     }) %>%
-    dplyr::ungroup()
-)
+    dplyr::ungroup())
 
 results$ADI <- factor(results$ADI, levels = c("Reproducible","Neighborhood Atlas"))
 
 ## pop-adjusted models: Life_Expectancy ~ ADI + Pop_Total_2015
-fit_one_pop <- function(df, adi_var) {
-  stats::lm(
-    stats::as.formula(paste("Life_Expectancy ~", adi_var, "+ Pop_Total_2015")),
-    data = df
-  )
-}
+fit_one_pop <- function(df, adi_var) {stats::lm(stats::as.formula(paste("Life_Expectancy ~", adi_var, "+ Pop_Total_2015")),data = df)}
 
-results_pop <- as.data.frame(
-  dat %>%
+results_pop <- as.data.frame(dat %>%
     dplyr::group_by(bin) %>%
     dplyr::group_modify(~{
       m_na <- fit_one_pop(.x, "NA_ADI_CT_NR")
@@ -2187,18 +2150,13 @@ results_pop <- as.data.frame(
         p   = c(c_na["p"],   c_re["p"])   |> as.numeric()
       )
     }) %>%
-    dplyr::ungroup()
-)
+    dplyr::ungroup())
 
 results_pop$ADI <- factor(results_pop$ADI, levels = c("Reproducible","Neighborhood Atlas"))
 
-## ---- R2 difference: Fisher-z p + bootstrap CI for diff_R2 ----
-
-set.seed(2567)  # single global seed for all bootstraps
-
+set.seed(2567)
 r2_diff_one_boot <- function(df, pop_adjusted = FALSE, nboot = 1000) {
   n <- nrow(df)
-
   ## observed models and diff_R2
   if (pop_adjusted) {
     m_na0 <- lm(Life_Expectancy ~ NA_ADI_CT_NR + Pop_Total_2015, data = df)
@@ -2210,21 +2168,15 @@ r2_diff_one_boot <- function(df, pop_adjusted = FALSE, nboot = 1000) {
   r2_na0  <- summary(m_na0)$r.squared
   r2_re0  <- summary(m_re0)$r.squared
   diff_R2 <- r2_re0 - r2_na0
-
-  ## your analytic SE + p-value
-  se_diff <- sqrt(
-    (1 - r2_na0^2) / (n - 2) +
-    (1 - r2_re0^2) / (n - 2)
-  )
+  ## SE + p-value
+  se_diff <- sqrt((1 - r2_na0^2) / (n - 2) + (1 - r2_re0^2) / (n - 2))
   z_stat <- diff_R2 / se_diff
   p_val  <- 2 * (1 - pnorm(abs(z_stat)))
-
   ## bootstrap CI for diff_R2
   boot_vals <- numeric(nboot)
   for (b in seq_len(nboot)) {
     idx <- sample.int(n, n, replace = TRUE)
     d   <- df[idx, , drop = FALSE]
-
     if (pop_adjusted) {
       m_na <- lm(Life_Expectancy ~ NA_ADI_CT_NR + Pop_Total_2015, data = d)
       m_re <- lm(Life_Expectancy ~ ReADI_CT_NR   + Pop_Total_2015, data = d)
@@ -2232,43 +2184,26 @@ r2_diff_one_boot <- function(df, pop_adjusted = FALSE, nboot = 1000) {
       m_na <- lm(Life_Expectancy ~ NA_ADI_CT_NR, data = d)
       m_re <- lm(Life_Expectancy ~ ReADI_CT_NR,   data = d)
     }
-
     r2_na <- summary(m_na)$r.squared
     r2_re <- summary(m_re)$r.squared
     boot_vals[b] <- r2_re - r2_na
   }
-
   ci <- stats::quantile(boot_vals, c(0.025, 0.975), na.rm = TRUE)
-
-  data.frame(
-    diff_R2  = diff_R2,
-    LCL_diff = unname(ci[1]),
-    UCL_diff = unname(ci[2]),
-    p_diff   = p_val
-  )
-}
+  data.frame(diff_R2 = diff_R2, LCL_diff = unname(ci[1]), UCL_diff = unname(ci[2]), p_diff = p_val
+  )}
 
 ## unadjusted R2 difference by bin
-r2_diff <- as.data.frame(
-  dat %>%
-    dplyr::group_by(bin) %>%
-    dplyr::group_modify(~r2_diff_one_boot(.x, pop_adjusted = FALSE, nboot = 1000)) %>%
-    dplyr::ungroup()
-)
+r2_diff <- as.data.frame(dat %>% dplyr::group_by(bin) %>% dplyr::group_modify(~r2_diff_one_boot(.x, pop_adjusted = FALSE, nboot = 1000)) %>% dplyr::ungroup())
 rownames(r2_diff) <- c("b0_9", "b10_19", "b20_39", "b40")
 
-## pop-adjusted R2 difference by bin
-r2_diff_pop <- as.data.frame(dat %>% dplyr::group_by(bin) %>% dplyr::group_modify(~r2_diff_one_boot(.x, pop_adjusted = TRUE, nboot = 1000)) %>% plyr::ungroup())
+r2_diff_pop <- as.data.frame(dat %>% dplyr::group_by(bin) %>% dplyr::group_modify(~r2_diff_one_boot(.x, pop_adjusted = TRUE, nboot = 1000)) %>% dplyr::ungroup())
 rownames(r2_diff_pop) <- c("b0_9", "b10_19", "b20_39", "b40")
-
-## text snippets (unchanged logic, no p-adjustment)
 
 diff_r2 <- r2_diff["b20_39", "diff_R2"]
 cil     <- r2_diff["b20_39", "LCL_diff"]
 ciu     <- r2_diff["b20_39", "UCL_diff"]
 pval    <- r2_diff["b20_39", "p_diff"]
 pval_print <- ifelse(pval < 0.001, 0.001, pval)
-
 paste("(R2 difference, ", round(diff_r2, 3), "; 95% CI, ", round(cil, 3), "-", round(ciu, 3), "; P<", round(pval_print, 3), ")", sep = "")
 
 diff_r2 <- r2_diff["b40", "diff_R2"]
@@ -2276,7 +2211,6 @@ cil     <- r2_diff["b40", "LCL_diff"]
 ciu     <- r2_diff["b40", "UCL_diff"]
 pval    <- r2_diff["b40", "p_diff"]
 pval_print <- ifelse(pval < 0.001, 0.001, pval)
-
 paste("(R2 difference, ", round(diff_r2, 3), "; 95% CI, ", round(cil, 3), "-", round(ciu, 3), "; P=", round(pval_print, 3), ")", sep = "")
 
 diff_r2 <- r2_diff_pop["b40", "diff_R2"]
@@ -2284,104 +2218,7 @@ cil     <- r2_diff_pop["b40", "LCL_diff"]
 ciu     <- r2_diff_pop["b40", "UCL_diff"]
 pval    <- r2_diff_pop["b40", "p_diff"]
 pval_print <- ifelse(pval < 0.001, 0.001, pval)
-
 paste("(R2 difference, ", round(diff_r2, 3), "; 95% CI, ", round(cil, 3), "-", round(ciu, 3), "; P=", round(pval_print, 3), ")", sep = "")
-
-############ OLD ################
-load("Pop_Total_2015.RData")
-load("ADI_Mortality_Data.RData")
-Pop_Total_2015 <- Pop_Total_2015[, c("GEOID", "Pop_Total_2015")]
-
-dat <- ADI_Mortality_Data %>%
-  mutate(NA_ReADI_2015_Diff = NA_ADI_CT_NR - ReADI_CT_NR) %>%
-  plyr::join(Pop_Total_2015, by = "GEOID") %>%
-  tidyr::drop_na(Life_Expectancy, NA_ADI_CT_NR, ReADI_CT_NR, Pop_Total_2015) %>%
-  mutate(Pop_Total_2015 = log(Pop_Total_2015), abs_diff = abs(NA_ReADI_2015_Diff), bin = cut(abs_diff, breaks = c(0, 10, 20, 40, Inf), labels = c("0–9","10–19","20–39","40–100"), right = FALSE))
-
-r2_ci <- function(model, adi_var) {
-  s  <- summary(model)
-  R2 <- s$r.squared
-  n  <- stats::nobs(model)
-  p  <- length(coef(model)) - 1  
-  ci <- MBESS::ci.R2(R2 = R2, df.1 = p, df.2 = n - p - 1, conf.level = 0.95)
-  cs <- coef(s)
-  if (adi_var %in% rownames(cs)) {
-    pval <- cs[adi_var, "Pr(>|t|)"]
-  } else {pval <- if (nrow(cs) >= 2) cs[2, "Pr(>|t|)"] else NA_real_}
-c(R2= R2, LCL = ci$Lower.Conf.Limit.R2, UCL = ci$Upper.Conf.Limit.R2, n = n, p  = pval)
-}
-
-fit_one <- function(df, adi_var) {stats::lm(stats::as.formula(paste("Life_Expectancy ~", adi_var)), data = df)}
-results <- as.data.frame(dat %>% dplyr::group_by(bin) %>%
-  dplyr::group_modify(~{
-    m_na <- fit_one(.x, "NA_ADI_CT_NR")
-    m_re <- fit_one(.x, "ReADI_CT_NR")
-    c_na <- r2_ci(m_na, "NA_ADI_CT_NR")
-    c_re <- r2_ci(m_re, "ReADI_CT_NR")
-    tibble::tibble(
-      ADI = c("Neighborhood Atlas","Reproducible"),
-      R2  = c(c_na["R2"],  c_re["R2"])  |> as.numeric(),
-      LCL = c(c_na["LCL"], c_re["LCL"]) |> as.numeric(),
-      UCL = c(c_na["UCL"], c_re["UCL"]) |> as.numeric(),
-      n   = c(c_na["n"],   c_re["n"])   |> as.integer(),
-      p   = c(c_na["p"],   c_re["p"])   |> as.numeric()
-    )}) %>%
-  dplyr::ungroup())
-results <- results %>% mutate(ADI = factor(ADI, levels = c("Reproducible","Neighborhood Atlas")))
-
-fit_one <- function(df, adi_var) {stats::lm(stats::as.formula(paste("Life_Expectancy ~", adi_var, "+ Pop_Total_2015")), data = df)}
-results_pop <- as.data.frame(dat %>%
-  dplyr::group_by(bin) %>%
-  dplyr::group_modify(~{
-    m_na <- fit_one(.x, "NA_ADI_CT_NR")
-    m_re <- fit_one(.x, "ReADI_CT_NR")
-    c_na <- r2_ci(m_na, "NA_ADI_CT_NR")
-    c_re <- r2_ci(m_re, "ReADI_CT_NR")
-    tibble::tibble(
-      ADI = c("Neighborhood Atlas","Reproducible"),
-      R2  = c(c_na["R2"],  c_re["R2"])  |> as.numeric(),
-      LCL = c(c_na["LCL"], c_re["LCL"]) |> as.numeric(),
-      UCL = c(c_na["UCL"], c_re["UCL"]) |> as.numeric(),
-      n   = c(c_na["n"],   c_re["n"])   |> as.integer(),
-      p   = c(c_na["p"],   c_re["p"])   |> as.numeric()
-    )}) %>%
-  dplyr::ungroup())
-results_pop <- results_pop %>% mutate(ADI = factor(ADI, levels = c("Reproducible","Neighborhood Atlas")))
-
-r2_diff <- as.data.frame(results %>%
-  group_by(bin) %>%
-  summarise(
-    R2_NA   = R2[ADI == "Neighborhood Atlas"],
-    R2_Re   = R2[ADI == "Reproducible"],
-    n       = unique(n),
-    .groups = "drop"
-  ) %>% mutate(diff_R2 = R2_Re - R2_NA, 
-    z_diff = diff_R2/sqrt((1 - R2_NA^2)/(n - 2) + (1 - R2_Re^2)/(n - 2)),
-    se_diff = diff_R2 / z_diff,
-    LCL_diff = diff_R2 - 1.96 * se_diff,
-    UCL_diff = diff_R2 + 1.96 * se_diff,
-    p_diff = 2 * (1 - pnorm(abs(z_diff))), 
-    adj.p = p_diff/4))
-rownames(r2_diff) <- c("b0_9", "b10_19", "b20_39", "b40")
-
-r2_diff_pop <- as.data.frame(results_pop %>%
-  group_by(bin) %>%
-  summarise(
-    R2_NA   = R2[ADI == "Neighborhood Atlas"],
-    R2_Re   = R2[ADI == "Reproducible"],
-    n       = unique(n),
-    .groups = "drop"
-  ) %>% mutate(diff_R2 = R2_Re - R2_NA, 
-    z_diff = diff_R2/sqrt((1 - R2_NA^2)/(n - 2) + (1 - R2_Re^2)/(n - 2)),
-    se_diff = diff_R2 / z_diff,
-    LCL_diff = diff_R2 - 1.96 * se_diff,
-    UCL_diff = diff_R2 + 1.96 * se_diff,
-    p_diff = 2 * (1 - pnorm(abs(z_diff))), 
-    adj.p = p_diff/4))
-rownames(r2_diff_pop) <- c("b0_9", "b10_19", "b20_39", "b40")
-
-
-
 ```
   </div>
 </div>
