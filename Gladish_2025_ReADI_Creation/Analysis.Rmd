@@ -1,0 +1,2472 @@
+---
+title: "<center>Reproducible Area Deprivation Index (ReADI) Analysis</center>"
+author: "<br><center>[Nicole Gladish, PhD](https://profiles.stanford.edu/nicole-gladish)</center>"
+date: "<center>`r format(Sys.time(), '%d %B, %Y')`</center>"
+output:
+  html_document:
+    includes:
+      after_body: "../templates/NG_footer.html"
+      in_header: "../templates/header.html"
+    toc: true
+    toc_depth: 2
+    number_sections: true
+    toc_float: 
+      collapsed: true
+      smooth_scroll: true
+    css: "../templates/bootstrap.css"
+    self_contained: true
+---
+<br><br>
+
+```{css, echo = FALSE}
+  /* General code block styling */
+  pre {
+    background-color: #2e2e2e;
+    color: #f5f5f5;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-family: "Courier New", monospace;
+  }
+  code {
+      background-color: #2e2e2e;
+    color: #f5f5f5;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-family: "Courier New", monospace;
+}
+  .hljs{
+  display: block;
+  padding: 0.5em;
+  background: #2e2e2e;
+  color: #f5f5f5;
+  }
+
+  /* Strings */
+  .hljs-string {
+      color: #c2a3fd; 
+  }
+
+  /* Numbers */
+  .hljs-number, 
+  .hljs-literal,
+  .hljs-logical,
+  .hljs-built_in, 
+  .hljs-variable.constant,
+  .hljs-keyword, 
+  .hljs-variable.language, 
+  .hljs-title.function{
+      color: #8fff84; 
+  }
+
+  /* Comments */
+  .hljs-comment, .hljs-quote {
+      color: #ff7777; 
+  }
+
+  /* Symbols and punctuation (e.g., parentheses, brackets) */
+.hljs-punctuation, .hljs-operator {
+      color: #13cee0; 
+  }
+  
+  /* General card block styling */
+  
+div.card {
+    background-color: #71797E; /* Dark background color */
+    border-radius: 10px;
+    padding: 10px;
+    color: white; /* Set text color to white */
+    margin-bottom: 0;
+    margin-top: 10px; /* Add some space above paragraphs if needed */
+  }
+   /* Explicitly set all header text inside .card to white (in case bootstrap overrides it) */
+  div.card h1, div.card h2, div.card h3, div.card h4, div.card h5, div.card h6 {
+    color: white; /* Set header text color to white */
+  }
+```
+
+# Introduction
+***
+
+<br>
+
+This document provides the fully reproducible analysis pipeline for the manuscript  
+*“Estimation of Mortality via the Neighborhood Atlas and Reproducible Area Deprivation Indices”* (Gladish, Phillips, & Rehkopf; JAMA Network Open; 2025).  
+
+The Area Deprivation Index (ADI) is a factor-based measure of neighborhood socioeconomic disadvantage originally developed by [Singh (2003)](https://ajph.aphapublications.org/doi/pdf/10.2105/AJPH.93.7.1137) from 17 census-derived indicators of income, education, housing, and employment. The [Neighborhood Atlas ADI (NA-ADI)](https://www.neighborhoodatlas.medicine.wisc.edu/) later operationalized this index using [American Community Survey (ACS)](https://www.census.gov/programs-surveys/acs/data.html) data and has been widely adopted in health services research and federal payment models.
+
+Subsequent work has shown that the NA-ADI departs from the original ADI methodology in several important ways, including incorrect application of factor-analytic weights [Petterson; 2023](https://academic.oup.com/healthaffairsscholar/article/1/5/qxad063/7342005), use of outdated weights across time, and minimal updating of variable thresholds. These issues distort deprivation estimates, particularly in high-cost urban and some rural areas, with implications for equity-focused policy and funding decisions [Hannan et al.; 2023](https://www.healthaffairs.org/doi/10.1377/hlthaff.2022.01406?url_ver=Z39.88-2003&rfr_id=ori%3Arid%3Acrossref.org&rfr_dat=cr_pub++0pubmed).  
+
+The [Reproducible Area Deprivation Index (ReADI)](https://sepi.stanford.edu/available-socioeconomic-position-indices/reproducible-area-deprivation-index-readi) is a corrected and fully transparent implementation of the ADI framework. The construction of ReADI is documented in detail in the ReADI methods script [ReADI_2022_Creation.Rmd](https://github.com/ngladish/ReADI/blob/main/2018-2022/ReADI_2022_Creation.Rmd). This document focuses solely on comparing the resulting ReADI scores with NA-ADI and other indices and evaluating their association with mortality. In brief, ReADI:
+
+- Recomputes factor weights using contemporaneous ACS data at each geographic level.
+- Standardizes all component variables prior to factor analysis.
+- Updates key thresholds (eg, education and income disparity) to reflect current socioeconomic conditions.
+- Produces block-group, tract, and county scores with complete, open documentation and code.  
+
+This R Markdown file:
+
+1. Imports previously generated ReADI scores, official NA-ADI scores obtained from the Neighborhood Atlas, calculated NA-ADI components, mortality data, and other deprivation indices used in the manuscript.  
+2. Merges these measures with mortality data and relevant covariates.  
+3. Quantifies agreement and systematic differences between ReADI, NA-ADI, and other indices (e.g., distributional comparisons, rank shifts, geographic patterns).  
+4. Evaluates each index’s ability to predict mortality using regression and risk-stratification analyses.  
+5. Generates all tables, statistics, and figures reported in the manuscript, along with supplementary diagnostics illustrating how differences between indices may affect policy decisions and resource allocation.
+
+All paths are relative to this repository, and all analyses are designed to run from a clean R session on any machine with the required packages installed.
+
+> Libraries
+
+<div style="margin:16px 0">
+  <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code91">Show Code</button>
+  <div id="code91" class="collapse">
+
+```{r, results = F, message = F}
+library(tidycensus)
+library(tidyverse)
+library(reshape2)
+library(httr)
+library(sf)
+options(tigris_use_cache = TRUE)
+library(tigris)
+library(MBESS)
+library(viridis)
+library(boot)
+library(corrplot)
+library(pals)
+library(effectsize)
+library(quantreg)
+```
+
+```{r}
+sessionInfo()
+```
+
+  </div>
+</div>
+  
+<br><br>
+
+# Methods
+***
+
+<br>
+
+## Data Sources
+### NA-ADI
+***
+
+<br>
+
+We use the official Neighborhood Atlas ADI (NA-ADI) national percentile scores (0–100) at the census block group (CBG) level for 2015 (v3.1) and 2022 (v4.0.1), downloaded directly from the [Neighborhood Atlas](https://www.neighborhoodatlas.medicine.wisc.edu/). Because the Atlas only distributes CBG-level scores, we construct tract- and county-level NA-ADI values by computing population-weighted averages of CBG scores using ACS total population (table [B01003_001](https://www.socialexplorer.com/data/ACS2022_5yr/metadata/?ds=ACS22_5yr&table=B01003)).
+
+Suppressed CBGs coded `"GQ"`, `"GQ-PH"`, `"PH"`, `"QDI"` (and for 2015 also `"NONE"`) are treated as missing (NA) and excluded from aggregation.
+
+Accessing ACS data via the Census API requires an API key, which can be requested [here](https://api.census.gov/data/key_signup.html). Once you receive your key, install it in your R environment as the `CENSUS_API_KEY` environment variable (for example, via `.Renviron`) and **do not** hard-code the key in shared code.
+
+For the **2018–2022** analyses we use NA-ADI at the CBG, tract, and county levels.  
+For the **2011–2015** mortality analyses we use NA-ADI at the tract level only.
+
+#### 2018-2022 
+
+> Census block group (official source)
+
+The code below:
+- Reads the official 2022 NA-ADI CBG file from GitHub (exported from the Neighborhood Atlas),
+- Ensures a 12-digit CBG GEOID, and
+- Recodes the suppressed categories as missing, resulting in 6,384 NA values and 235,952 CBGs remaining.
+
+<div style="margin:16px 0">
+  <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code199">Show Code</button>
+  <div id="code199" class="collapse">
+```{r, eval = F}
+NA_ADI_CBG_2022 <- read.csv("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/NA_ADI/2018-2022/US_2022_ADI_Census_Block_Group_v4_0_1.csv", colClasses = c(FIPS = "character"), stringsAsFactors = FALSE)
+# Sanity checks: FIPS is already a 12-digit unique ID per row
+stopifnot(all(nchar(NA_ADI_CBG_2022$FIPS) == 12), 
+length(unique(NA_ADI_CBG_2022$FIPS)) == nrow(NA_ADI_CBG_2022))
+NA_ADI_CBG_2022$GEOID <- NA_ADI_CBG_2022$FIPS
+NA_ADI_CBG_2022$ADI_NATRANK[NA_ADI_CBG_2022$ADI_NATRANK %in% c("GQ", "GQ-PH", "PH", "QDI")] <- NA
+NA_ADI_CBG_2022$ADI_NATRANK <- as.numeric(NA_ADI_CBG_2022$ADI_NATRANK)
+names(NA_ADI_CBG_2022)[names(NA_ADI_CBG_2022) == "ADI_NATRANK"] <- "NA_ADI"
+NA_ADI_CBG_2022 <- NA_ADI_CBG_2022[complete.cases(NA_ADI_CBG_2022$NA_ADI),]
+save(NA_ADI_CBG_2022, file = "NA_ADI_CBG_2022.RData")
+```
+  </div>
+</div>
+
+<br>
+
+> Census tract (population-weighted from CBG)
+
+For tract-level NA-ADI scores in 2022, we:
+1. Use ACS 2022 B01003_001 to obtain CBG-level population counts,
+2. Within each tract, compute CBG-specific weights as the proportion of tract population residing in each CBG, and
+3. Compute the tract-level NA-ADI as the population-weighted mean of the CBG NA-ADI scores (`NA_ADI`).
+
+This results in 83,722 census tracts with tract-level NA-ADI scores.
+
+<div style="margin:16px 0">
+  <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code234">Show Code</button>
+  <div id="code234" class="collapse">
+```{r, eval = F}
+load("NA_ADI_CBG_2022.RData")
+
+#Basic sanity checks on NA_ADI_CBG_2022
+stopifnot(all(c("GEOID", "NA_ADI") %in% names(NA_ADI_CBG_2022)),
+  is.character(NA_ADI_CBG_2022$GEOID),
+  is.numeric(NA_ADI_CBG_2022$NA_ADI) || is.logical(NA_ADI_CBG_2022$NA_ADI))
+# Check Census API key
+if (!nzchar(Sys.getenv("CENSUS_API_KEY"))) {
+  stop(
+    "Census API key not found.\n",
+    "Please set the CENSUS_API_KEY environment variable (e.g. in .Renviron) ",
+    "before running this document.\n")}
+
+states <- setdiff(unique(fips_codes$state_code), c("60", "66", "69", "74", "78")) # Removing US territories
+
+ACS_2022_PopSize_CBG <- do.call(rbind, lapply(states, function(st) {
+    get_acs(
+      year       = 2022,
+      geography  = "block group",
+      state      = st,
+      key        = Sys.getenv("CENSUS_API_KEY"),
+      variables  = "B01003_001")
+  }))
+ACS_2022_PopSize_CBG <- reshape2::dcast(ACS_2022_PopSize_CBG, GEOID + NAME ~ variable, value.var = "estimate")
+ACS_2022_PopSize_CBG$GEOID_CT <- substr(ACS_2022_PopSize_CBG$GEOID, 1, 11)
+ACS_2022_PopSize_CBG$GEOID_C <- substr(ACS_2022_PopSize_CBG$GEOID, 1, 5)
+ACS_2022_PopSize_CBG <- ACS_2022_PopSize_CBG[ACS_2022_PopSize_CBG$GEOID %in% NA_ADI_CBG_2022$GEOID,]
+sum(is.na(NA_ADI_CBG_2022$NA_ADI))
+stopifnot(identical(NA_ADI_CBG_2022$GEOID, ACS_2022_PopSize_CBG$GEOID))
+save(ACS_2022_PopSize_CBG, file = "ACS_2022_PopSize_CBG.RData")
+
+# Sanity: every NA-ADI CBG should have a population row
+stopifnot(all(NA_ADI_CBG_2022$GEOID %in% ACS_2022_PopSize_CBG$GEOID))
+
+PopSize_CT <- tapply(ACS_2022_PopSize_CBG$B01003_001, ACS_2022_PopSize_CBG$GEOID_CT, sum, na.rm = TRUE)
+stopifnot(identical(names(PopSize_CT), unique(ACS_2022_PopSize_CBG$GEOID_CT)))
+CT_weight <- ACS_2022_PopSize_CBG$B01003_001 / PopSize_CT[ match(ACS_2022_PopSize_CBG$GEOID_CT, names(PopSize_CT)) ]
+w_sums <- tapply(CT_weight, ACS_2022_PopSize_CBG$GEOID_CT, sum, na.rm = TRUE)
+if (any(abs(w_sums - 1) > 1e-6)) {
+  warning("Some tract-level weights do not sum to 1 (tolerance 1e-6).")
+}
+
+NA_ADI_CT_2022_vec <- tapply(seq_len(nrow(NA_ADI_CBG_2022)), ACS_2022_PopSize_CBG$GEOID_CT, function(idx) {
+    weighted.mean(x = NA_ADI_CBG_2022$NA_ADI[idx], w = CT_weight[idx], na.rm = TRUE)})
+NA_ADI_CT_2022 <- data.frame(GEOID  = names(NA_ADI_CT_2022_vec), NA_ADI = round(as.numeric(NA_ADI_CT_2022_vec)), row.names = NULL)
+if (any(is.na(NA_ADI_CT_2022$NA_ADI))) {warning("Some tract-level NA-ADI values are NA after aggregation.")}
+save(NA_ADI_CT_2022, file = "NA_ADI_CT_2022.RData")
+```
+  </div>
+</div>
+
+<br><br>
+
+> County (population-weighted from CBG)
+
+County-level NA-ADI scores are constructed analogously: we aggregate CBG scores within each county using population-weighted means based on ACS 2022 B01003_001, treating suppressed CBGs as missing and excluding them from the weighted averages.
+
+There were a total of 3,214 counties resulting from this.
+
+<div style="margin:16px 0">
+  <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code599">Show Code</button>
+  <div id="code599" class="collapse">
+```{r, eval = F}
+load("NA_ADI_CBG_2022.RData")
+load("ACS_2022_PopSize_CBG.RData")
+
+PopSize_C <- tapply(ACS_2022_PopSize_CBG$B01003_001, ACS_2022_PopSize_CBG$GEOID_C, sum, na.rm = TRUE)
+stopifnot(identical(names(PopSize_C), unique(ACS_2022_PopSize_CBG$GEOID_C)))
+PopSize_C <- data.frame(GEOID_C = names(PopSize_C), PopSize_C = as.numeric(PopSize_C), row.names  = NULL)
+ACS_2022_PopSize_CBG <- plyr::join(ACS_2022_PopSize_CBG, PopSize_C, by = "GEOID_C")
+ACS_2022_PopSize_CBG$C_weight <- ACS_2022_PopSize_CBG$B01003_001/ACS_2022_PopSize_CBG$PopSize_C
+# Check weights: should sum to ~1 within each county
+w_sums <- tapply(ACS_2022_PopSize_CBG$C_weight, ACS_2022_PopSize_CBG$GEOID_C, sum, na.rm = TRUE)
+if (any(abs(w_sums - 1) > 1e-6)) {
+  warning("Some county weights do not sum to 1 (tolerance 1e-6).")
+}
+sub_weights <- ACS_2022_PopSize_CBG[, c("GEOID", "GEOID_C", "C_weight")]
+NA_ADI_CBG_2022 <- plyr::join(NA_ADI_CBG_2022, sub_weights, by = "GEOID")
+# Sanity: every NA-ADI row should now have a county and weight
+stopifnot(!any(is.na(NA_ADI_CBG_2022$GEOID_C)),
+  !any(is.na(NA_ADI_CBG_2022$C_weight)))
+
+NA_ADI_C_2022_vec <- tapply(1:nrow(NA_ADI_CBG_2022), NA_ADI_CBG_2022$GEOID_C, function(idx) {
+  weighted.mean(x = NA_ADI_CBG_2022$NA_ADI[idx], w = NA_ADI_CBG_2022$C_weight[idx], na.rm = TRUE)})
+NA_ADI_C_2022 <- data.frame(GEOID = names(NA_ADI_C_2022_vec), NA_ADI = as.numeric(NA_ADI_C_2022_vec),  row.names = NULL)
+NA_ADI_C_2022$NA_ADI <- round(NA_ADI_C_2022$NA_ADI, digits = 0)
+# Quick sanity: no all-NA tracts created by aggregation
+if (any(is.na(NA_ADI_C_2022$NA_ADI))) {
+  warning("Some county-level NA-ADI values are NA after aggregation.")
+}
+save(NA_ADI_C_2022, file = "NA_ADI_C_2022.RData")
+
+
+old <- NA_ADI_C_2022
+rm(NA_ADI_C_2022)
+
+identical(new$NA_ADI, old$ADI)
+```
+  </div>
+</div>
+
+<br><br>
+
+#### 2011-2015
+
+For the mortality analyses, we use publicly available CDC mortality data through 2015, which are provided at the census tract level. To align with this, we reconstruct 2015 NA-ADI tract scores from the official CBG-level NA-ADI (v3.1) and ACS 2011–2015 population data.
+
+> Census Block Group (official source)
+
+We:
+- Download the official 2015 NA-ADI CBG file (v3.1) from the Neighborhood Atlas,
+- Convert suppression codes (`"GQ"`, `"GQ-PH"`, `"PH"`, `"QDI"`, `"NONE"`) to `NA`, and
+- Save the cleaned CBG dataset as `NA_ADI_CBG_2015` for use in the tract-level aggregation below.
+
+There were 5,323 CBGs with NAs leaving 215,010 CBGs for analysis.
+
+<div style="margin:16px 0">
+  <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code354">Show Code</button>
+  <div id="code354" class="collapse">
+```{r, eval = F}
+NA_ADI_CBG_2015 <- read.table("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/NA_ADI/2011-2015/US_2015_ADI_Census_Block_Group_v3.1.txt", sep = ",", header = T, row.names = 1, colClasses = c(FIPS = "character"), stringsAsFactors = FALSE)
+# Sanity checks: FIPS is already a 12-digit unique ID per row
+stopifnot(all(nchar(NA_ADI_CBG_2015$FIPS) == 12), 
+length(unique(NA_ADI_CBG_2015$FIPS)) == nrow(NA_ADI_CBG_2015))
+NA_ADI_CBG_2015$GEOID <- NA_ADI_CBG_2015$FIPS
+NA_ADI_CBG_2015$ADI_NATRANK[NA_ADI_CBG_2015$ADI_NATRANK %in% c("GQ", "GQ-PH", "PH", "QDI", "NONE")] <- NA
+NA_ADI_CBG_2015$ADI_NATRANK <- as.numeric(NA_ADI_CBG_2015$ADI_NATRANK)
+names(NA_ADI_CBG_2015)[names(NA_ADI_CBG_2015) == "ADI_NATRANK"] <- "NA_ADI"
+NA_ADI_CBG_2015 <- NA_ADI_CBG_2015[complete.cases(NA_ADI_CBG_2015$NA_ADI),]
+save(NA_ADI_CBG_2015, file = "NA_ADI_CBG_2015.RData")
+```
+  </div>
+</div>
+
+<br>
+
+> Census Tract (population-weighted from CBG)
+
+Using ACS 2011–2015 total population (B01003_001), we:
+1. Obtain CBG-level population counts,
+2. Compute within-tract CBG weights as the proportion of tract population in each CBG, and
+3. Aggregate CBG NA-ADI scores to the tract level via population-weighted means, excluding suppressed CBGs.
+
+These tract-level 2015 NA-ADI scores are then merged to the CDC mortality data for the 2011–2015 analyses.
+
+<div style="margin:16px 0">
+  <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code581">Show Code</button>
+  <div id="code518" class="collapse">
+```{r, eval = F}
+load("NA_ADI_CBG_2015.RData")
+
+#Basic sanity checks on NA_ADI_CBG_2022
+stopifnot(all(c("GEOID", "NA_ADI") %in% names(NA_ADI_CBG_2015)),
+  is.character(NA_ADI_CBG_2015$GEOID),
+  is.numeric(NA_ADI_CBG_2015$NA_ADI) || is.logical(NA_ADI_CBG_2015$NA_ADI))
+
+states <- setdiff(unique(fips_codes$state_code), c("60", "66", "69", "74", "78")) # Removing US territories
+ACS_2015_PopSize_CBG <- do.call(rbind, lapply(states, function(st) {
+    get_acs(
+      year       = 2015,
+      geography  = "block group",
+      state      = st,
+      key        = Sys.getenv("CENSUS_API_KEY"),
+      variables  = "B01003_001")
+  }))
+ACS_2015_PopSize_CBG <- reshape2::dcast(ACS_2015_PopSize_CBG, GEOID + NAME ~ variable, value.var = "estimate")
+ACS_2015_PopSize_CBG$GEOID_CT <- substr(ACS_2015_PopSize_CBG$GEOID, 1, 11)
+ACS_2015_PopSize_CBG$GEOID_C <- substr(ACS_2015_PopSize_CBG$GEOID, 1, 5)
+ACS_2015_PopSize_CBG <- ACS_2015_PopSize_CBG[ACS_2015_PopSize_CBG$GEOID %in% NA_ADI_CBG_2015$GEOID,]
+save(ACS_2015_PopSize_CBG, file = "ACS_2015_PopSize_CBG.RData")
+
+# Sanity: every NA-ADI CBG should have a population row
+stopifnot(all(NA_ADI_CBG_2015$GEOID %in% ACS_2015_PopSize_CBG$GEOID))
+
+PopSize_CT <- tapply(ACS_2015_PopSize_CBG$B01003_001, ACS_2015_PopSize_CBG$GEOID_CT, sum, na.rm = TRUE)
+stopifnot(identical(names(PopSize_CT), unique(ACS_2015_PopSize_CBG$GEOID_CT)))
+PopSize_CT <- data.frame(GEOID_CT = names(PopSize_CT), PopSize_CT = PopSize_CT, row.names  = NULL)
+ACS_2015_PopSize_CBG <- plyr::join(ACS_2015_PopSize_CBG, PopSize_CT, by = "GEOID_CT")
+ACS_2015_PopSize_CBG$CT_weight <- ACS_2015_PopSize_CBG$B01003_001/ACS_2015_PopSize_CBG$PopSize_CT
+# Check weights: should sum to ~1 within each tract
+w_sums <- tapply(ACS_2015_PopSize_CBG$CT_weight, ACS_2015_PopSize_CBG$GEOID_CT, sum, na.rm = TRUE)
+if (any(abs(w_sums - 1) > 1e-6)) {
+  warning("Some tract-level weights do not sum to 1 (tolerance 1e-6).")
+}
+sub_weights <- ACS_2015_PopSize_CBG[, c("GEOID", "GEOID_CT", "CT_weight")]
+NA_ADI_CBG_2015 <- plyr::join(NA_ADI_CBG_2015, sub_weights, by = "GEOID")
+# Sanity: every NA-ADI row should now have a tract and weight
+stopifnot(!any(is.na(NA_ADI_CBG_2015$GEOID_CT)),
+  !any(is.na(NA_ADI_CBG_2015$CT_weight)))
+
+NA_ADI_CT_2015_vec <- tapply(1:nrow(NA_ADI_CBG_2015), NA_ADI_CBG_2015$GEOID_CT, function(idx) {
+  weighted.mean(x = NA_ADI_CBG_2015$NA_ADI[idx], w = NA_ADI_CBG_2015$CT_weight[idx], na.rm = TRUE)})
+NA_ADI_CT_2015 <- data.frame(GEOID = names(NA_ADI_CT_2015_vec), NA_ADI = as.numeric(NA_ADI_CT_2015_vec),  row.names = NULL)
+NA_ADI_CT_2015$NA_ADI <- round(NA_ADI_CT_2015$NA_ADI, digits = 0)
+# Quick sanity: no all-NA tracts created by aggregation
+if (any(is.na(NA_ADI_CT_2015$NA_ADI))) {
+  warning("Some tract-level NA-ADI values are NA after aggregation.")
+}
+save(NA_ADI_CT_2015, file = "NA_ADI_CT_2015.RData")
+```
+  </div>
+</div>
+
+<br><br>
+
+### ReADI 
+***
+
+<br>
+
+Full, step-by-step construction of ReADI—including variable definitions, formulas, imputation, and factor loadings are documented in:
+
+- **ReADI 2022:** [`2018-2022/ReADI_2022_Creation.Rmd`](https://github.com/ngladish/ReADI/blob/main/2018-2022/ReADI_2022_Creation.Rmd)  
+- **ReADI 2015:** [`2011-2015/ReADI_2015_Creation.Rmd`](https://github.com/ngladish/ReADI/blob/main/2011-2015/ReADI_2015_Creation.Rmd)
+
+This document does **not** recreate ReADI; it only loads these precomputed scores.
+
+#### 2018-2022
+
+For the main analyses we use 2018–2022 ReADI at the census block group (CBG), census tract (CT), and county levels. These are loaded from the public ReADI repository:
+
+<div style="margin:16px 0">
+  <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code462">Show Code</button>
+  <div id="code462" class="collapse">
+```{r, eval = F}
+load(url("https://raw.githubusercontent.com/ngladish/ReADI/main/2018-2022/ReADI_CBG_2022.RData"))
+load(url("https://raw.githubusercontent.com/ngladish/ReADI/main/2018-2022/ReADI_CT_2022.RData"))
+load(url("https://raw.githubusercontent.com/ngladish/ReADI/main/2018-2022/ReADI_C_2022.RData"))
+```
+  </div>
+</div>
+  
+<br><br>
+
+#### 2011-2015
+***
+
+<br>
+
+For the mortality analyses, we use ReADI at the census tract level for 2011–2015 to align with the mortality follow-up window.
+
+<div style="margin:16px 0">
+  <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code470">Show Code</button>
+  <div id="code470" class="collapse">
+```{r, eval = F}
+load(url("https://raw.githubusercontent.com/ngladish/ReADI/main/2011-2015/ReADI_CT_2015.RData"))
+```
+  </div>
+</div>
+
+### Other indices (2018–2022)
+***
+
+<br>
+
+For external comparison, we use four additional indices: the [Social Vulnerability Index (SVI)](https://www.atsdr.cdc.gov/place-health/php/svi/index.html), the [Social Deprivation Index (SDI)](https://www.graham-center.org/maps-data-tools/social-deprivation-index.html), the [Neighborhood Stress Score (NSS7)](https://www.mass.gov/files/documents/2017/11/07/social-determinants-of-health-faq.pdf), and a [French Deprivation Index–style measure (FDep)]((https://bmcpublichealth.biomedcentral.com/articles/10.1186/1471-2458-9-33). All four are created or obtained in:
+
+- [NSS7_FDep_SDI_2022_Creation.Rmd](https://github.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/Other_Indices/NSS7_FDep_SDI_2022_Creation.Rmd)
+
+Below we summarize how each index is used in this analysis.
+
+> SVI
+
+We use the CDC/ATSDR [Social Vulnerability Index (SVI)](https://www.atsdr.cdc.gov/place-health/php/svi/index.html) as an external benchmark. SVI is a composite index developed by the CDC/ATSDR Geospatial Research, Analysis, & Services Program (GRASP) to quantify social vulnerability to disasters and public health emergencies at the census tract and county levels. It is based on 16 variables grouped into four themes (socioeconomic status, household characteristics, racial/ethnic minority status & language, and housing type & transportation) and reported as national percentile ranks from 0–1 (higher = more vulnerable).
+
+In this analysis, we:
+
+- Download the **2022 SVI** at **census tract** and **county** levels from the [CDC/ATSDR SVI website](https://www.atsdr.cdc.gov/place-health/php/svi/svi-data-documentation-download.html).
+- Use the **overall national percentile score** (`RPL_THEMES`) as the primary SVI measure.
+- Assign each census block group (CBG) the SVI value of its county so that all CBGs within a county share that county’s SVI score.
+
+We do **not** recalculate or modify SVI components; all SVI values are taken directly from the official CDC/ATSDR releases. Full methods are described in the CDC/ATSDR SVI documentation.
+
+> SDI
+
+We use a reproduced [Social Deprivation Index (SDI)](https://www.graham-center.org/maps-data-tools/social-deprivation-index.html) as a comparator. SDI was originally developed by [Butler et al., 2012](https://onlinelibrary.wiley.com/doi/10.1111/j.1475-6773.2012.01449.x), [Phillips et al., 2016](https://www.healthaffairs.org/doi/10.1377/hlthaff.2016.0709), and the Robert Graham Center to summarize area-level social deprivation from seven ACS-derived indicators (poverty, low education, non-employment, renting, crowding, single-parent families, and no vehicle access) using factor-analytic weights.
+
+Here, we:
+
+- Construct the seven SDI components from ACS 5-year data using the documented Census tables and formulas.
+- Fit a one-factor model and use the factor score coefficients as weights to form a composite SDI score.
+- Express SDI as national percentile scores (0–100), with higher values indicating greater deprivation.
+
+These SDI scores are a fully reproducible implementation based on the public SDI methodology. They are **not** the official Robert Graham Center SDI release but are intended as a high-fidelity approximation for side-by-side comparison with ReADI, NA-ADI, and other indices.
+
+> NSS7
+
+We include a reproduced [Neighborhood Stress Score (NSS7)](https://www.mass.gov/files/documents/2017/11/07/social-determinants-of-health-faq.pdf) as another comparator. NSS7 is an economic stress measure originally developed for MassHealth by [Ash et al.](https://repository.escholarship.umassmed.edu/server/api/core/bitstreams/f7d562e5-9bf0-4e41-bf5b-c67809e7272d/content), based on seven census-derived indicators at the neighborhood (CBG) level: poverty, ≤200% FPL, public assistance, unemployment, no vehicle access, single-parent families, and low education.
+
+In this analysis, we:
+
+- Construct the seven NSS7 component percentages from ACS 5-year data at the CBG level using the published Census tables and formulas.
+- Standardize each component, sum the seven z-scores, and re-standardize the sum to obtain a continuous NSS7 score (mean ≈ 0; higher = greater neighborhood stress).
+- Aggregate CBG-level NSS7 scores to tracts and counties using population-weighted means (ACS total population).
+
+This NSS7 implementation is an independent, fully reproducible approximation based on the published methodology; it is not derived from the original MassHealth member-level data but is designed to be conceptually and numerically comparable to ReADI, NA-ADI, SDI, SVI, and FDep.
+
+> FDep
+
+We also include a French Deprivation Index (FDep)–style measure. FDep is a PCA-based deprivation index originally developed for France, combining four neighborhood-level indicators (income, education, blue-collar employment, and unemployment) [Rey et al. 2009](https://bmcpublichealth.biomedcentral.com/articles/10.1186/1471-2458-9-33); [Temam et al. 2017](https://bmcpublichealth.biomedcentral.com/articles/10.1186/s12889-017-4967-3).
+
+In this analysis, we:
+
+- Construct four ACS-based CBG-level variables analogous to the original FDep components (median household income, % high school graduates, % blue-collar workers, % unemployed).
+- Standardize these variables and run principal components analysis (PCA).
+- Use the **first principal component (PC1)** as the FDep score, orienting it so that higher values correspond to greater deprivation.
+- Aggregate to tracts and counties using population-weighted means.
+
+This yields a transparent PCA-based deprivation index in the FDep tradition that can be compared directly with ReADI, NA-ADI, SDI, SVI, and NSS7.
+
+<div style="margin:16px 0">
+  <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code516">Show Code</button>
+  <div id="code516" class="collapse">
+```{r, eval = F}
+load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/Other_Indices/SDVI_CBG_2022.RData"))
+load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/Other_Indices/SDVI_CT_2022.RData"))
+load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/Other_Indices/SDVI_C_2022.RData"))
+```
+  </div>
+</div>
+
+### Mortality 2010-2015
+***
+
+<br>
+
+Census tract–level mortality data were obtained from the [U.S. Small-Area Life Expectancy Estimates Project (USALEEP)](https://www.cdc.gov/nchs/nvss/usaleep/usaleep.html), which provides period life expectancy estimates for 2010–2015. We use tracts from the 50 U.S. states and the District of Columbia and link them to our deprivation indices via the 11-digit census tract GEOID.
+
+Tracts with missing or suppressed USALEEP estimates are excluded from all mortality analyses.
+
+<div style="margin:16px 0">
+  <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code570">Show Code</button>
+  <div id="code570" class="collapse">
+```{r, eval = F}
+load(url("https://raw.githubusercontent.com/ngladish/ReADI/main/2011-2015/ReADI_CT_2015.RData"))
+load("NA_ADI_CT_2015.RData")
+ADI_Mortality_Data <- read.csv("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/USALEEP_Mortality/US_A.csv", colClasses = c(Tract.ID = "character"), stringsAsFactors = FALSE)
+ADI_Mortality_Data$GEOID <- ADI_Mortality_Data$Tract.ID
+stopifnot(all(nchar(ADI_Mortality_Data$GEOID) == 11),
+ length(unique(ADI_Mortality_Data$GEOID)) == nrow(ADI_Mortality_Data))
+
+ADI_Mortality_Data <- ADI_Mortality_Data[, c("GEOID", "e.0.")]
+names(ADI_Mortality_Data)[names(ADI_Mortality_Data) == "e.0."] <- "Life_Expectancy"
+
+common_geoids <- Reduce(intersect, list(ADI_Mortality_Data$GEOID, NA_ADI_CT_2015$GEOID, ReADI_CT_2015$GEOID))
+ADI_Mortality_Data <- ADI_Mortality_Data[ADI_Mortality_Data$GEOID %in% common_geoids, ]
+NA_ADI_2015_sub    <- NA_ADI_CT_2015[NA_ADI_CT_2015$GEOID %in% common_geoids, c("GEOID", "NA_ADI")]
+ReADI_2015_sub     <- ReADI_CT_2015[ReADI_CT_2015$GEOID %in% common_geoids, c("GEOID", "ReADI_CT_NR")]
+
+ADI_Mortality_Data <- plyr::join(ADI_Mortality_Data, NA_ADI_2015_sub, by = "GEOID")
+ADI_Mortality_Data <- plyr::join(ADI_Mortality_Data, ReADI_2015_sub, by = "GEOID")
+names(ADI_Mortality_Data)[names(ADI_Mortality_Data) == "NA_ADI"] <- "NA_ADI_CT_NR"
+save(ADI_Mortality_Data, file = "ADI_Mortality_Data.RData")
+
+states <- setdiff(unique(fips_codes$state_code), c("60", "66", "69", "74", "78")) # Removing US territories
+Pop_Total_2015 <- do.call(rbind, lapply(states, function(st){
+   get_acs(
+    year = 2015,
+    geography = "tract",
+    state = st,
+    key = Sys.getenv("CENSUS_API_KEY"),
+    variables = "B00001_001E")
+}))
+
+Pop_Total_2015 <- Pop_Total_2015 %>% tidyr::separate(NAME, c("Tract", "County", "State"), sep = ",")
+names(Pop_Total_2015)[names(Pop_Total_2015) == "estimate"] <- "Pop_Total_2015"
+Pop_Total_2015$variable <- NULL
+save(Pop_Total_2015, file = "Pop_Total_2015.RData")
+```
+  </div>
+</div>
+
+## Statistical Analysis
+***
+
+<br>
+
+### ReADI and NA-ADI weights
+***
+
+<br>
+
+ReADI variable weights come from the one-factor models fit in the ReADI 2022 creation script [ReADI_2022_Creation.Rmd](https://github.com/ngladish/ReADI/blob/main/2018-2022/ReADI_2022_Creation.Rmd). For each geography, we use psych::fa (principal factor method with population weights) and take the factor score coefficients ($weights), i.e., the linear weights applied to z-standardized census variables to generate the factor score. In this document we refer to these coefficients as the “ReADI weights.” 
+
+To benchmark against the original ADI, we also attach Singh (2003)’s published factor score coefficients (the “Tract score coefficient” column in Table 1) to the same set of variables, storing them in the NA_ADI column of ReADI_2022_Wt. Thus:
+
+- ReADI scores are the factor scores from our own models, rescaled to 0–100.
+
+- NA-ADI weights are Singh’s published factor score coefficients, used only for comparing weight/loading patterns, not to recompute the official Neighborhood Atlas ADI.
+
+<div style="margin:16px 0">
+  <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code612">Show Code</button>
+  <div id="code612" class="collapse">
+```{r, eval = F}
+load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/ReADI_2022_Wt.RData"))
+
+## 1. Defining the NA-ADI/Singh factor score coefficients
+na_adi_weights <- c(
+  MEDFI     = -0.0977,  # Median family income
+  INCDIS    =  0.0936,  # Income disparity
+  BELPL     =  0.0977,  # Families below poverty level
+  PL150     =  0.1037,  # Population below 150% of poverty threshold
+  EDU9YR    =  0.0849,  # < 9 years education
+  HSDPNHIGH = -0.0970,  # ≥ high school diploma
+  EMPWC     = -0.0874,  # White-collar employment
+  UNEMP     =  0.0806,  # Unemployment
+  MEDHV     = -0.0688,  # Median home value
+  MEDRNT    = -0.0781,  # Median gross rent
+  MEDMORT   = -0.0770,  # Median monthly mortgage
+  OWN       = -0.0615,  # Owner-occupied housing
+  SNGPNT    =  0.0719,  # Single-parent households
+  NOVEH     =  0.0694,  # Households without a motor vehicle
+  NOINT     =  0.0877,  # Households without a telephone/internet
+  NOPLUM    =  0.0510,  # Units without complete plumbing (log)
+  CROWD     =  0.0556   # >1 person per room
+)
+
+na_adi_df <- data.frame(Vars = names(na_adi_weights), NA_ADI = as.numeric(na_adi_weights), row.names = NULL)
+ADI_2022_Wt <- merge(ReADI_2022_Wt, na_adi_df, by = "Vars", all.x = TRUE, sort = FALSE)
+setdiff(na_adi_df$Vars, ADI_2022_Wt$Vars)   # should be character(0)
+setdiff(ADI_2022_Wt$Vars, na_adi_df$Vars)   # anything here just won't get NA_ADI
+save(ADI_2022_Wt, file = "ADI_2022_Wt.RData")
+```
+  </div>
+</div>
+
+<br><br>
+
+### ReADI and NA-ADI loadings
+***
+
+<br>
+
+ReADI variable loadings come from the one-factor models fit in the ReADI 2022 creation script [ReADI_2022_Creation.Rmd](https://github.com/ngladish/ReADI/blob/main/2018-2022/ReADI_2022_Creation.Rmd). For comparison with our ReADI weights and loadings, we also attach the original factor loadings reported by Singh (2003) for the 1990 census tract-level ADI. These loadings come directly from Table 1 of the Singh paper (column “Tract Loading”) and correspond to the same 17 component variables we use in ReADI (e.g., median family income, income disparity, % below poverty, % crowding, etc.).
+
+In Singh’s work, these loadings describe the strength and direction of the association between each standardized census variable and the single latent deprivation factor. Kind et al. later reused the corresponding factor score coefficients (the weights) from this same 1990 tract model when constructing the Neighborhood Atlas ADI. Here, we explicitly separate:
+
+ReADI weights/loadings, estimated de novo from contemporary ACS data, and
+
+Singh (2003) tract loadings, taken verbatim from the original 1990 factor model.
+
+We store the Singh tract loadings alongside the ReADI weights in ReADI_2022_Wt, aligned by variable name. This allows us to directly compare:
+(i) ReADI vs Singh loadings, and
+(ii) ReADI vs NA-ADI weights/loadings, using a consistent set of 17 harmonized variables.
+
+<div style="margin:16px 0">
+  <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code686">Show Code</button>
+  <div id="code686" class="collapse">
+```{r, eval}
+load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/ReADI_2022_Loadings.RData"))
+
+## 1. Defining the NA-ADI/Singh factor score coefficients
+na_adi_loadings <- c(
+  MEDFI     = -0.8629,  # Median family income
+  INCDIS    =  0.8262,  # Income disparity
+  BELPL     =  0.8623,  # Families below poverty level
+  PL150     =  0.9157,  # Population below 150% of poverty threshold
+  EDU9YR    =  0.7498,  # < 9 years education
+  HSDPNHIGH = -0.8562,  # ≥ high school diploma
+  EMPWC     = -0.7721,  # White-collar employment
+  UNEMP     =  0.7117,  # Unemployment
+  MEDHV     = -0.6074,  # Median home value
+  MEDRNT    = -0.6896,  # Median gross rent
+  MEDMORT   = -0.6795,  # Median monthly mortgage
+  OWN       = -0.5431,  # Owner-occupied housing
+  SNGPNT    =  0.6346,  # Single-parent households
+  NOVEH     =  0.6126,  # Households without a motor vehicle
+  NOINT     =  0.7748,  # Households without a telephone/internet
+  NOPLUM    =  0.4505,  # Units without complete plumbing (log)
+  CROWD     =  0.4910   # >1 person per room
+)
+
+na_adi_df <- data.frame(Vars = names(na_adi_loadings), NA_ADI = as.numeric(na_adi_loadings), row.names = NULL)
+ADI_2022_Loadings <- merge(ReADI_2022_Loadings, na_adi_df, by = "Vars", all.x = TRUE, sort = FALSE)
+setdiff(na_adi_df$Vars, ADI_2022_Loadings$Vars)   # should be character(0)
+setdiff(ADI_2022_Loadings$Vars, na_adi_df$Vars)   # anything here just won't get NA_ADI
+save(ADI_2022_Loadings, file = "ADI_2022_Loadings.RData")
+```
+  </div>
+</div>
+
+<br><br>
+
+### Combined ADI component dataset
+***
+
+<br>
+
+For the 2018–2022 analyses, we construct a unified dataset that contains, for each geography, both ReADI and NA-ADI scores along with their underlying component variables. After harmonizing GEOIDs and restricting to areas with valid values for both indices, the analytic sample includes 235,952 census block groups (CBGs), 83,722 census tracts (CTs), and 3,214 counties with overlapping ReADI and NA-ADI scores.
+
+The ReADI components (raw and standardized) and population weights come directly from the ReADI creation pipeline, as documented in [ReADI_2022_Creation.Rmd](https://github.com/ngladish/ReADI/blob/main/2018-2022/ReADI_2022_Creation.Rmd).
+
+The NA-ADI scores used here are the official national percentiles downloaded from the Neighborhood Atlas.
+
+Because the Neighborhood Atlas does not release the underlying code or intermediate composite variables, we reconstructed NA-ADI–style components to enable indicator-level and methodological comparisons. These reverse-engineered NA-ADI components are described in detail in [RENA_2022.Rmd](https://github.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/RENA/RENA_2022.Rmd). Briefly, we implemented the published variable definitions, thresholds, and transformations from Singh (2003) and Kind et al. (2014), and aligned our approach with the independently developed replication by [Petterson; 2023](https://academic.oup.com/healthaffairsscholar/article/1/5/qxad063/7342005), who reported correlations >0.9999 between his reconstructed scores and the official NA-ADI.
+
+In all analyses:
+
+- Any NA-ADI score is the official Neighborhood Atlas value.
+
+- Any NA-ADI component or raw indicator attributed to NA-ADI comes from this reverse-engineered implementation and should be interpreted as a high-fidelity approximation of the internal NA-ADI construction, not as an alternative version of the official index.
+
+<div style="margin:16px 0">
+  <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code733">Show Code</button>
+  <div id="code733" class="collapse">
+```{r, eval = F}
+vars   <- c("MEDFI", "INCDIS", "BELPL", "PL150", "EDU9YR", "HSDPNHIGH", "EMPWC", "UNEMP", "MEDHV", "MEDRNT", "MEDMORT", "OWN", "SNGPNT", "NOVEH", "NOINT", "NOPLUM", "CROWD")
+
+# CBG --------------------------------------------------------------------
+load(url("https://raw.githubusercontent.com/ngladish/ReADI/main/2018-2022/ReADI_CBG_2022.RData"))
+load("NA_ADI_CBG_2022.RData")
+load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/RENA/RENA_ADI_2022_CBG_RawVars.RData"))
+
+NA_ADI_CBG_2022 <- NA_ADI_CBG_2022[, c("GEOID", "NA_ADI")]
+ADI_CBG_Data <- plyr::join(ReADI_CBG_2022, NA_ADI_CBG_2022, by = "GEOID", type = "left")
+stopifnot(!anyDuplicated(ADI_CBG_Data$GEOID))
+ADI_CBG_Data <- ADI_CBG_Data[, c("GEOID", vars, "POPWT", "ReADI_CBG_Raw", "ReADI_CBG_NR", "NA_ADI")]
+colnames(ADI_CBG_Data) <- c("GEOID", paste0(c(vars, "POPWT"), "_Re"), "ReADI_CBG_Raw", "ReADI_CBG_NR", "NA_ADI")
+ADI_CBG_Data$ReADI_CBG_NR <- as.numeric(ADI_CBG_Data$ReADI_CBG_NR)
+RENA_ADI_2022_CBG_RawVars <- RENA_ADI_2022_CBG_RawVars[, c("GEOID", vars)]
+colnames(RENA_ADI_2022_CBG_RawVars) <- c("GEOID", paste0(vars, "_NA"))
+ADI_CBG_Data <- plyr::join(ADI_CBG_Data, RENA_ADI_2022_CBG_RawVars, by = "GEOID", type = "left")
+stopifnot(!anyDuplicated(ADI_CBG_Data$GEOID))
+save(ADI_CBG_Data, file = "ADI_CBG_Data.RData")
+
+# CT --------------------------------------------------------------------
+load(url("https://raw.githubusercontent.com/ngladish/ReADI/main/2018-2022/ReADI_CT_2022.RData"))
+load("NA_ADI_CT_2022.RData")
+load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/RENA/RENA_ADI_2022_CT_RawVars.RData"))
+NA_ADI_CT_2022 <- NA_ADI_CT_2022[, c("GEOID", "NA_ADI")]
+ADI_CT_Data <- plyr::join(ReADI_CT_2022, NA_ADI_CT_2022, by = "GEOID", type = "left")
+ADI_CT_Data <- ADI_CT_Data[, c("GEOID", vars, "POPWT", "ReADI_CT_Raw", "ReADI_CT_NR", "NA_ADI")]
+colnames(ADI_CT_Data) <- c("GEOID", paste0(c(vars, "POPWT"), "_Re"), c("ReADI_CT_Raw", "ReADI_CT_NR", "NA_ADI"))
+ADI_CT_Data$ReADI_CT_NR <- as.numeric(ADI_CT_Data$ReADI_CT_NR)
+RENA_ADI_2022_CT_RawVars <- RENA_ADI_2022_CT_RawVars[, c("GEOID", vars)]
+colnames(RENA_ADI_2022_CT_RawVars) <- c("GEOID", paste0(vars, "_NA"))
+ADI_CT_Data <- plyr::join(ADI_CT_Data, RENA_ADI_2022_CT_RawVars, by = "GEOID", type = "left")
+stopifnot(!anyDuplicated(ADI_CT_Data$GEOID))
+save(ADI_CT_Data, file = "ADI_CT_Data.RData")
+
+# C --------------------------------------------------------------------
+load(url("https://raw.githubusercontent.com/ngladish/ReADI/main/2018-2022/ReADI_C_2022.RData"))
+load("NA_ADI_C_2022.RData")
+load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/RENA/RENA_ADI_2022_C_RawVars.RData"))
+NA_ADI_C_2022 <- NA_ADI_C_2022[, c("GEOID", "NA_ADI")]
+ADI_C_Data <- plyr::join(ReADI_C_2022, NA_ADI_C_2022, by = "GEOID", type = "left")
+ADI_C_Data <- ADI_C_Data[, c("GEOID", vars, "POPWT", "ReADI_C_Raw", "ReADI_C_NR", "NA_ADI")]
+colnames(ADI_C_Data) <- c("GEOID", paste0(c(vars, "POPWT"), "_Re"), c("ReADI_C_Raw", "ReADI_C_NR", "NA_ADI"))
+ADI_C_Data$ReADI_C_NR <- as.numeric(ADI_C_Data$ReADI_C_NR)
+RENA_ADI_2022_C_RawVars <- RENA_ADI_2022_C_RawVars[, c("GEOID", vars)]
+colnames(RENA_ADI_2022_C_RawVars) <- c("GEOID", paste0(vars, "_NA"))
+ADI_C_Data <- plyr::join(ADI_C_Data, RENA_ADI_2022_C_RawVars, by = "GEOID", type = "left")
+stopifnot(!anyDuplicated(ADI_C_Data$GEOID))
+save(ADI_C_Data, file = "ADI_C_Data.RData")
+```
+  </div>
+</div>
+
+<br><br>
+
+### Difference score calculation
+***
+
+<br>
+
+To quantify how much the Neighborhood Atlas ADI (NA-ADI) diverges from ReADI, we compute a simple difference score at each geography (CBG, tract, county):
+
+Diff_NA_ReADI = NA_ADI − ReADI
+
+Throughout, ReADI is treated as the reference implementation. Under this convention:
+- Diff_NA_ReADI > 0 → NA-ADI assigns higher (more deprived) scores than ReADI (over-estimation of deprivation relative to ReADI).
+- Diff_NA_ReADI < 0 → NA-ADI assigns lower (less deprived) scores than ReADI (under-estimation of deprivation relative to ReADI).
+
+These difference scores are added to the CBG-, tract-, and county-level ADI datasets and are used in all subsequent analyses of agreement, bias, and urban–rural or regional patterns.
+
+<div style="margin:16px 0">
+  <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code933">Show Code</button>
+  <div id="code933" class="collapse">
+```{r}
+load("ADI_CBG_Data.RData")
+load("ADI_CT_Data.RData")
+load("ADI_C_Data.RData")
+ADI_CBG_Data$Diff_NA_ReADI <- ADI_CBG_Data$NA_ADI - ADI_CBG_Data$ReADI_CBG_NR
+ADI_CT_Data$Diff_NA_ReADI <- ADI_CT_Data$NA_ADI - ADI_CT_Data$ReADI_CT_NR
+ADI_C_Data$Diff_NA_ReADI <- ADI_C_Data$NA_ADI - ADI_C_Data$ReADI_C_NR
+save(ADI_CBG_Data, file = "ADI_CBG_Data.RData")
+save(ADI_CT_Data, file = "ADI_CT_Data.RData")
+save(ADI_C_Data, file = "ADI_C_Data.RData")
+```
+  </div>
+</div>
+
+<br><br>
+
+### Difference correlation to components
+***
+
+<br>
+
+<div style="margin:16px 0">
+  <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code841">Show Code</button>
+  <div id="code841" class="collapse">
+```{r, eval = F}
+load("ADI_CBG_Data.RData")
+load("ADI_CT_Data.RData")
+load("ADI_C_Data.RData")
+
+vars <- c("Diff_NA_ReADI", "MEDFI_Re", "INCDIS_Re", "BELPL_Re", "PL150_Re", "EDU9YR_Re", "HSDPNHIGH_Re", "EMPWC_Re", "UNEMP_Re", "MEDHV_Re", "MEDRNT_Re", "MEDMORT_Re", "OWN_Re", "SNGPNT_Re", "NOVEH_Re", "NOINT_Re", "NOPLUM_Re", "CROWD_Re")
+var_names <- c("Median Family Income", "Income Disparity", "Below Poverty 100%", "Below Poverty 150%", "Low Education", "High Education", "White Collar Employment", "Unemployment", "Median Home Value", "Median Rent", "Median Mortgage", "Home Ownership", "Single Parent", "No Vehicle", "No Internet", "No Plumbing", "Crowded Housing")
+
+make_diff_cor <- function(df, geo_label) {
+  stopifnot(all(vars %in% colnames(df)))
+  dat <- df[, vars]
+  comp_vars <- vars[-1]
+  cors <- sapply(comp_vars, function(v) {
+    stats::cor(dat[["Diff_NA_ReADI"]], dat[[v]], use = "complete.obs")
+  })
+  pvals <- sapply(comp_vars, function(v) {
+    stats::cor.test(dat[["Diff_NA_ReADI"]], dat[[v]], use = "complete.obs")$p.value
+  })
+  out <- data.frame(
+    Vars      = comp_vars,
+    Variables = var_names,
+    Cor       = as.numeric(cors),
+    P_value   = as.numeric(pvals),
+    Geo       = geo_label,
+    stringsAsFactors = FALSE
+  )
+  out}
+
+ADI_Diff_Cor <- rbind(make_diff_cor(ADI_CBG_Data, "Block Group"), make_diff_cor(ADI_CT_Data,  "Census Tract"), make_diff_cor(ADI_C_Data,   "County"))
+
+ADI_Diff_Cor <- ADI_Diff_Cor %>%
+  group_by(Geo) %>%
+  arrange(desc(Cor), .by_group = TRUE) %>%
+  mutate(Ord = row_number()) %>%
+  ungroup()
+
+save(ADI_Diff_Cor, file = "ADI_Diff_Cor.RData")
+```
+  </div>
+</div>
+
+### Loading correlation dataset
+***
+
+<br>
+
+To evaluate how closely each ADI’s empirical behavior matches its factor structure, we constructed a “loading–correlation” dataset that links, for every component and geography:
+
+1. The Pearson correlation between the ADI score and each of the 17 component indicators; and  
+2. The corresponding factor loading used to construct the index.
+
+We do this separately for ReADI and NA-ADI and for each geography (census block group, census tract, and county), then stack the results into a single long-format dataset (`ADI_Cor_L`).
+
+Concretely:
+- We load the combined component datasets for ReADI and the reverse-engineered NA-ADI at each geography (`ADI_CBG_Data`, `ADI_CT_Data`, `ADI_C_Data`) and the table of Singh/Kind factor loadings (`ADI_2022_Loadings`).
+- For each geography, we compute the correlation between the ADI score (ReADI or NA-ADI) and each standardized component.
+- We strip the variable suffixes (`_Re`, `_NA`) to recover the common component names, then merge in the corresponding Singh/Kind loadings and ReADI loadings.
+- Finally, we bind the block group, tract, and county results into a single dataset (`ADI_Cor_L`), which is used for the loading–correlation regressions and for Figure 2A (ReADI) and Figure 2B (NA-ADI) in the Results.
+
+<div style="margin:16px 0">
+  <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code821">Show Code</button>
+  <div id="code821" class="collapse">
+```{r, eval = F}
+load("ADI_CBG_Data.RData")
+load("ADI_CT_Data.RData")
+load("ADI_C_Data.RData")
+load("ADI_2022_Loadings.RData")
+
+NA_Vars <- c("MEDFI_NA", "INCDIS_NA", "BELPL_NA", "PL150_NA", "EDU9YR_NA", "HSDPNHIGH_NA", "EMPWC_NA", "UNEMP_NA", "MEDHV_NA", "MEDRNT_NA", "MEDMORT_NA", "OWN_NA", "SNGPNT_NA", "NOVEH_NA", "NOINT_NA", "NOPLUM_NA", "CROWD_NA")
+
+Re_Vars <- c("MEDFI_Re", "INCDIS_Re", "BELPL_Re", "PL150_Re", "EDU9YR_Re", "HSDPNHIGH_Re", "EMPWC_Re", "UNEMP_Re", "MEDHV_Re", "MEDRNT_Re", "MEDMORT_Re", "OWN_Re", "SNGPNT_Re", "NOVEH_Re", "NOINT_Re", "NOPLUM_Re", "CROWD_Re")
+
+Variables <- c("Median Family Income", "Income Disparity", "Below Poverty 100%", "Below Poverty 150%", "Low Education", "High Education", "White Collar Employment", "Unemployment", "Median Home Value", "Median Rent", "Median Mortgage", "Home Ownership", "Single Parent", "No Vehicle", "No Internet", "No Plumbing", "Crowded Housing")
+
+build_cor_df <- function(dat, geo_label, na_target, re_target, na_vars, re_vars, var_labels, loadings_df) {
+  ## NA-ADI correlations
+  cor_na <- cor(dat[, c(na_target, na_vars)], use = "complete.obs")
+  na_cor_vec <- cor_na[na_vars, na_target]
+
+  ## ReADI correlations
+  cor_re <- cor(dat[, c(re_target, re_vars)], use = "complete.obs")
+  re_cor_vec <- cor_re[re_vars, re_target]
+  base_na_names <- sub("_.*$", "", na_vars)
+  base_re_names <- sub("_.*$", "", re_vars)
+
+  stopifnot(
+    identical(loadings_df$Vars, base_na_names),
+    identical(base_na_names, base_re_names),
+    length(var_labels) == length(base_na_names)
+  )
+
+  # Pick the right ReADI loading column for this geography
+  re_col <- switch(
+    geo_label,
+    "CBG" = "CBG",
+    "CT"  = "CT",
+    "C"   = "C",
+    stop("Unknown geo_label: ", geo_label)
+  )
+
+  data.frame(
+    Vars            = base_na_names,
+    Variables       = var_labels,
+    Geo             = geo_label,
+    NA_Cor          = as.numeric(na_cor_vec),
+    ReADI_Cor       = as.numeric(re_cor_vec),
+    NA_ADI_Loadings = loadings_df$NA_ADI,     # Singh / NA-ADI weights (same across geos)
+    ReADI_Loadings  = loadings_df[[re_col]],  # ReADI weights for this geography
+    stringsAsFactors = FALSE
+  )
+}
+
+# Build for each geography ------------------------------------------------------
+
+ADI_Cor_CBG <- build_cor_df(dat = ADI_CBG_Data, geo_label = "CBG", na_target = "NA_ADI", re_target = "ReADI_CBG_NR", na_vars = NA_Vars, re_vars = Re_Vars, var_labels = Variables, loadings_df = ADI_2022_Loadings)
+
+ADI_Cor_CT <- build_cor_df(dat        = ADI_CT_Data,geo_label  = "CT",na_target  = "NA_ADI",re_target  = "ReADI_CT_NR", na_vars    = NA_Vars, re_vars    = Re_Vars, var_labels = Variables, loadings_df = ADI_2022_Loadings)
+
+ADI_Cor_C <- build_cor_df(dat        = ADI_C_Data, geo_label  = "C", na_target  = "NA_ADI", re_target  = "ReADI_C_NR", na_vars    = NA_Vars, re_vars    = Re_Vars, var_labels = Variables, loadings_df = ADI_2022_Loadings)
+
+# Combine and save --------------------------------------------------------------
+
+ADI_Cor_L <- rbind(ADI_Cor_CBG, ADI_Cor_CT, ADI_Cor_C)
+ADI_Cor_L$Geography <- ifelse(ADI_Cor_L$Geo == "CBG", "Block Group", ADI_Cor_L$Geo)
+ADI_Cor_L$Geography <- ifelse(ADI_Cor_L$Geo == "CT", "Census Tract", ADI_Cor_L$Geography)
+ADI_Cor_L$Geography <- ifelse(ADI_Cor_L$Geo == "C", "County", ADI_Cor_L$Geography)
+save(ADI_Cor_L, file = "ADI_Cor_L.RData")
+```
+  </div>
+</div>
+
+### Urban–rural and regional designation
+***
+
+<br>
+
+To evaluate potential urban–rural bias in ReADI and NA-ADI, we assign an urban/rural flag to census tracts and block groups using the 2020 Census Urban Area (UAC10) shapefile from the TIGER/Line database (downloaded directly from the U.S. Census Bureau). After harmonizing coordinate reference systems, each tract and block group polygon is intersected with the UAC10 polygons: any unit that overlaps a designated urban area is labeled Urban, and all others are labeled Rural.
+
+We then attach state FIPS, state name, and Census region (Midwest, Northeast, South, West; including the District of Columbia in the South) using the tigris::fips_codes crosswalk. Geometry is dropped and these labels are merged into the analysis datasets (ADI_CBG_Data and ADI_CT_Data), so downstream models can use urban/rural and region without needing spatial objects.
+
+We do not classify counties as urban or rural. Although ReADI is calculated at the county level for policy interpretation and linkage to county-level health data, counties typically contain a mix of urban and rural tracts, making a binary county label misleading. All formal urban–rural bias analyses are therefore conducted at the census tract level, with block groups used descriptively.
+
+Using this approach we identify:
+
+- Census block groups (n = 240,165): 30,318 rural and 209,847 urban
+  - Midwest: 55,119 total (9,662 rural; 45,457 urban)
+  - Northeast: 43,456 total (3,677 rural; 39,779 urban)
+  - South: 86,845 total (13,412 rural; 73,433 urban)
+  - West: 52,255 total (3,548 rural; 48,707 urban)
+  
+- Census tracts (n = 84,535): 8,410 rural and 76,125 urban
+  - Midwest: 18,421 total (2,487 rural; 15,934 urban)
+  - Northeast: 14,551 total (994 rural; 13,557 urban)
+  - South: 31,995 total (3,878 rural; 28,117 urban)
+  - West: 18,646 total (1,049 rural; 17,597 urban)
+
+These final urban–rural and region labels are stored in ADI_CBG_Data and ADI_CT_Data and used in all subsequent stratified and bias analyses.
+
+<div style="margin:16px 0">
+  <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code988">Show Code</button>
+  <div id="code988" class="collapse">
+```{r, eval = F}
+load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/ACS_CBG_2022_Geometry.RData"))
+load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/ACS_CT_2022_Geometry.RData"))
+load("ADI_CBG_Data.RData")
+load("ADI_CT_Data.RData")
+
+## Download and read Census 2020 urban area shapefile --------------------------
+temp_dir <- tempdir()
+zip_url <- "https://www2.census.gov/geo/tiger/TIGER2020/UAC/tl_2020_us_uac10.zip"
+zip_file <- file.path(temp_dir, "urban_areas.zip")
+
+resp <- httr::GET(zip_url, write_disk(zip_file, overwrite = TRUE))
+stopifnot(httr::status_code(resp) == 200)
+unzip(zip_file, exdir = temp_dir)
+
+shp_file <- list.files(temp_dir, pattern = "\\.shp$", full.names = TRUE)
+stopifnot(length(shp_file) == 1L)   # should only be the UAC shapefile
+urban_areas <- sf::st_read(shp_file, quiet = TRUE)
+
+## Align CRS ------------------------------------------------------------------
+
+if (sf::st_crs(urban_areas) != sf::st_crs(ACS_CT_2022_Geometry)) {
+  urban_areas <- sf::st_transform(urban_areas, sf::st_crs(ACS_CT_2022_Geometry))}
+
+if (sf::st_crs(ACS_CBG_2022_Geometry) != sf::st_crs(ACS_CT_2022_Geometry)) {
+  ACS_CBG_2022_Geometry <- sf::st_transform(ACS_CBG_2022_Geometry, sf::st_crs(ACS_CT_2022_Geometry))}
+
+## Add urban/rural flag ---------------------------------------------
+
+add_urban_label <- function(sf_obj, urban_sf) {
+  hits <- sf::st_intersects(sf_obj, urban_sf)
+  sf_obj$urban_label <- factor(
+    ifelse(lengths(hits) > 0, "Urban", "Rural"),
+    levels = c("Rural", "Urban"))
+   sf_obj}
+
+ACS_CT_2022_Geometry  <- add_urban_label(ACS_CT_2022_Geometry,  urban_areas)
+ACS_CBG_2022_Geometry <- add_urban_label(ACS_CBG_2022_Geometry, urban_areas)
+
+## Adding regions --------------------------------------------------------
+
+fips_crosswalk <- fips_codes %>%
+  distinct(state_code, state_name, state) %>%        # state = USPS abbrev
+  filter(state %in% c(state.abb, "DC")) %>%          # include DC explicitly
+  mutate(region_raw = case_when(state == "DC" ~ "South",            
+      TRUE ~ state.region[match(state, state.abb)]),
+    region = dplyr::recode(region_raw, "North Central" = "Midwest")) %>%
+  transmute(
+    STATEFP    = state_code,
+    state_name = state_name,
+    region     = region)
+
+## Tracts
+ACS_CT_2022_Geometry <- ACS_CT_2022_Geometry %>%
+  mutate(STATEFP = substr(GEOID, 1, 2)) %>%
+  left_join(fips_crosswalk, by = "STATEFP")
+
+## Block groups
+ACS_CBG_2022_Geometry <- ACS_CBG_2022_Geometry %>%
+  mutate(STATEFP = substr(GEOID, 1, 2)) %>%
+  left_join(fips_crosswalk, by = "STATEFP")
+
+## Quick sanity checks --------------------------------------------------------
+
+table(ACS_CT_2022_Geometry$urban_label)
+table(ACS_CBG_2022_Geometry$urban_label)
+table(ACS_CT_2022_Geometry$region)
+table(ACS_CBG_2022_Geometry$region)
+table(ACS_CT_2022_Geometry$region, ACS_CT_2022_Geometry$urban_label)
+table(ACS_CBG_2022_Geometry$region, ACS_CBG_2022_Geometry$urban_label)
+
+## Combining with ADI data --------------------------------------------------------
+
+stopifnot(anyDuplicated(ACS_CBG_2022_Geometry$GEOID) == 0, anyDuplicated(ADI_CBG_Data$GEOID) == 0, anyDuplicated(ACS_CT_2022_Geometry$GEOID) == 0, anyDuplicated(ADI_CT_Data$GEOID) == 0)
+
+ACS_CBG_2022_Geometry <- ACS_CBG_2022_Geometry %>% st_drop_geometry() %>% select(GEOID, STATEFP, state_name, urban_label, region)
+ADI_CBG_Data <- plyr::join(ADI_CBG_Data, ACS_CBG_2022_Geometry, by   = "GEOID", type = "left")
+
+ACS_CT_2022_Geometry <- ACS_CT_2022_Geometry %>% st_drop_geometry() %>% select(GEOID, STATEFP, state_name, urban_label, region)
+ADI_CT_Data <- plyr::join(ADI_CT_Data, ACS_CT_2022_Geometry, by   = "GEOID", type = "left")
+
+## Regional/urban summaries --------------------------------------------------------
+
+CT_region_summary <- ADI_CT_Data %>%
+  group_by(state_name, region, urban_label) %>%
+  dplyr::summarise(
+    mean_diff = mean(Diff_NA_ReADI, na.rm = TRUE),
+    sd_diff = sd(Diff_NA_ReADI, na.rm = TRUE),
+    n_tracts = n(),
+    se_diff = sd_diff / sqrt(n_tracts),
+    .groups = "drop")
+CT_region_summary <- CT_region_summary[!is.na(CT_region_summary$state_name),]
+
+CBG_region_summary <- ADI_CBG_Data %>%
+  group_by(state_name, region, urban_label) %>%
+  dplyr::summarise(
+    mean_diff = mean(Diff_NA_ReADI, na.rm = TRUE),
+    sd_diff = sd(Diff_NA_ReADI, na.rm = TRUE),
+    n_cbgs = n(),
+    se_diff = sd_diff / sqrt(n_cbgs),
+    .groups = "drop")
+CBG_region_summary <- CBG_region_summary[!is.na(CBG_region_summary$state_name),]
+
+## Saving objects --------------------------------------------------------
+save(ADI_CBG_Data, file = "ADI_CBG_Data.RData")
+save(ADI_CT_Data, file = "ADI_CT_Data.RData")
+save(CBG_region_summary, file = "CBG_region_summary.RData")
+save(CT_region_summary, file = "CT_region_summary.RData")
+```
+  </div>
+</div>
+
+<div style="clear: both;"></div>
+<br><br>
+
+# Results
+***
+<br>
+
+We structured the analyses to evaluate how closely the Reproducible Area Deprivation Index (ReADI) recapitulates the Neighborhood Atlas ADI (NA-ADI), where and why the two indices diverge, and whether those divergences matter for downstream applications such as comparisons with other indices and prediction of mortality.
+
+We first assess agreement between NA-ADI and ReADI scores and factor loadings across block group, tract, and county geographies, and compare how each index aligns with other widely used deprivation and vulnerability measures (SDI, SVI, FDep, NSS7). We then quantify where NA-ADI and ReADI differ most in absolute score terms and how those discrepancies are distributed across the U.S. and by urban–rural status. Finally, we examine whether ReADI’s differences from NA-ADI translate into gains in explained variance for 2015 life expectancy, overall and within bins defined by the magnitude of NA-ADI vs ReADI disagreement.
+
+## Agreement between ADI scores (linear regression)
+
+To quantify agreement between the Neighborhood Atlas ADI (NA-ADI) and the Reproducible ADI (ReADI) at each geographic level, we restricted the data to block groups, tracts, and counties with non-missing scores on both indices and:
+
+- created analysis datasets containing only NA-ADI, ReADI, and a geography label (`Block Group`, `Census Tract`, `County`), dropping rows with missing values using `complete.cases()`;  
+- fit simple linear regressions of ReADI on NA-ADI separately for each geography, extracted R-squared as a summary of agreement, and used `MBESS::ci.R2()` to obtain 95% confidence intervals for R-squared; and  
+- computed the RMSE between NA-ADI and ReADI for each geography, using the squared differences (`Diff_NA_ReADI`) and a delta-method approximation to derive a standard error, and constructed 95% confidence intervals as RMSE ± 1.96 × SE.
+
+The printed outputs from this chunk reproduce the R-squared ranges and RMSE values (with 95% confidence intervals) reported in the Results section and provide the summary statistics underlying Figure 1A.
+
+<div style="margin:16px 0">
+  <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1114">Show Code</button>
+  <div id="code1114" class="collapse">
+```{r, eval = F}
+load("ADI_CBG_Data.RData")
+load("ADI_CT_Data.RData")
+load("ADI_C_Data.RData")
+
+ADI_CBG <- ADI_CBG_Data[, c("ReADI_CBG_NR", "NA_ADI")]
+ADI_CBG <- ADI_CBG[complete.cases(ADI_CBG),]
+ADI_CBG$Geography <- "Block Group"
+colnames(ADI_CBG) <- c("ReADI", "NA_ADI", "Geography")
+ADI_CT <- ADI_CT_Data[, c("ReADI_CT_NR", "NA_ADI")]
+ADI_CT <- ADI_CT[complete.cases(ADI_CT),]
+ADI_CT$Geography <- "Census Tract"
+colnames(ADI_CT) <- c("ReADI", "NA_ADI", "Geography")
+ADI_C <- ADI_C_Data[, c("ReADI_C_NR", "NA_ADI")]
+ADI_C <- ADI_C[complete.cases(ADI_C),]
+ADI_C$Geography <- "County"
+colnames(ADI_C) <- c("ReADI", "NA_ADI", "Geography")
+
+# Ns
+nrow(ADI_CBG)
+nrow(ADI_CT)
+nrow(ADI_C)
+
+# linear regression
+r2 <- summary(lm(ADI_CBG_Data$ReADI_CBG_NR ~ ADI_CBG_Data$NA_ADI))$r.squared
+ciu <- ci.R2(R2 = summary(lm(ReADI_CBG_NR ~ NA_ADI, data = ADI_CBG_Data))$r.squared, df.1 = 1, df.2 = nrow(ADI_CBG_Data) - 1 - 1, conf.level = 0.95)[[1]]
+cil <- ci.R2(R2 = summary(lm(ReADI_CBG_NR ~ NA_ADI, data = ADI_CBG_Data))$r.squared, df.1 = 1, df.2 = nrow(ADI_CBG_Data) - 1 - 1, conf.level = 0.95)[[3]]
+paste(round(r2, 3), " (95% CI, ", round(ciu, 3), "-", round(cil, 3), ")", sep="")
+
+r2 <- summary(lm(ADI_CT_Data$ReADI_CT_NR ~ ADI_CT_Data$NA_ADI))$r.squared
+ciu <- ci.R2(R2 = summary(lm(ReADI_CT_NR ~ NA_ADI, data = ADI_CT_Data))$r.squared, df.1 = 1, df.2 = nrow(ADI_CT_Data) - 1 - 1, conf.level = 0.95)[[1]]
+cil <- ci.R2(R2 = summary(lm(ReADI_CT_NR ~ NA_ADI, data = ADI_CT_Data))$r.squared, df.1 = 1, df.2 = nrow(ADI_CT_Data) - 1 - 1, conf.level = 0.95)[[3]]
+paste(round(r2, 3), " (95% CI, ", round(ciu, 3), "-", round(cil, 3), ")", sep="")
+
+r2 <- summary(lm(ADI_C_Data$ReADI_C_NR ~ ADI_C_Data$NA_ADI))$r.squared
+ciu <- ci.R2(R2 = summary(lm(ReADI_C_NR ~ NA_ADI, data = ADI_C_Data))$r.squared, df.1 = 1, df.2 = nrow(ADI_C_Data) - 1 - 1, conf.level = 0.95)[[1]]
+cil <- ci.R2(R2 = summary(lm(ReADI_C_NR ~ NA_ADI, data = ADI_C_Data))$r.squared, df.1 = 1, df.2 = nrow(ADI_C_Data) - 1 - 1, conf.level = 0.95)[[3]]
+paste(round(r2, 3), " (95% CI, ", round(ciu, 3), "-", round(cil, 3), ")", sep="")
+
+# rmse
+ADI_CBG_Data <- ADI_CBG_Data[!is.na(ADI_CBG_Data$NA_ADI),]
+rmse_obs <- Metrics::rmse(ADI_CBG_Data$ReADI_CBG_NR, ADI_CBG_Data$NA_ADI)
+se_rmse <- sd((ADI_CBG_Data$Diff_NA_ReADI)^2) / (2 * rmse_obs * sqrt(length(ADI_CBG_Data$ReADI_CBG_NR)))
+ci <- rmse_obs + c(-1, 1) * qnorm(0.975) * se_rmse
+paste(round(rmse_obs, 1), " (95% CI, ", round(ci[1], 1), "-", round(ci[2], 1), ")", sep = "")
+
+ADI_CT_Data <- ADI_CT_Data[!is.na(ADI_CT_Data$NA_ADI),]
+rmse_obs <- Metrics::rmse(ADI_CT_Data$ReADI_CT_NR, ADI_CT_Data$NA_ADI)
+se_rmse <- sd((ADI_CT_Data$Diff_NA_ReADI)^2) / (2 * rmse_obs * sqrt(length(ADI_CT_Data$ReADI_CT_NR)))
+ci <- rmse_obs + c(-1, 1) * qnorm(0.975) * se_rmse
+paste(round(rmse_obs, 1), " (95% CI, ", round(ci[1], 1), "-", round(ci[2], 1), ")", sep = "")
+
+ADI_C_Data <- ADI_C_Data[!is.na(ADI_C_Data$NA_ADI),]
+rmse_obs <- Metrics::rmse(ADI_C_Data$ReADI_C_NR, ADI_C_Data$NA_ADI)
+se_rmse <- sd((ADI_C_Data$ReADI_C_NR - ADI_C_Data$NA_ADI)^2) / (2 * rmse_obs * sqrt(length(ADI_C_Data$ReADI_C_NR)))
+ci <- rmse_obs + c(-1, 1) * qnorm(0.975) * se_rmse
+paste(round(rmse_obs, 1), " (95% CI, ", round(ci[1], 1), "-", round(ci[2], 1), ")", sep = "")
+```
+  </div>
+</div>
+
+
+## Figure 1A
+***
+> Figure 1. Comparison of Neighborhood Atlas Area Deprivation Index (NA-ADI) and Reproducible ADI (ReADI) Scores and Factor Weights at Multiple Geographic Scales. A. Associations between the NA-ADI and ReADI scores.
+
+This figure visualizes the relationship between the Neighborhood Atlas ADI (NA-ADI) and the Reproducible ADI (ReADI) across geographic levels. Using the cleaned datasets (`ADI_CBG`, `ADI_CT`, `ADI_C`), we stack block group, tract, and county data into a single long-format object (`ADI_Merge`) with a `Geography` indicator, plot ReADI (x-axis) versus NA-ADI (y-axis) as scatterplots, overlay linear fits with `geom_smooth(method = "lm")`, and use `facet_wrap(~Geography)` to produce separate panels for block groups, census tracts, and counties on a comparable scale.
+
+This reproduces Figure 1A in the manuscript, showing how closely NA-ADI tracks ReADI at each geographic scale and providing the visual counterpart to the R² and RMSE summaries reported above.
+
+<div>
+  <img src="Images/Figure1A.png" alt="Graph" style="width: 100%;">
+</div>
+
+<div style="margin:16px 0">
+  <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1031">Show Code</button>
+  <div id="code1031" class="collapse">
+```{r, eval = F}
+ADI_Merge <- rbind(ADI_CBG, ADI_CT)
+ADI_Merge <- rbind(ADI_Merge, ADI_C)
+ggplot(ADI_Merge, aes(ReADI, NA_ADI, group = Geography)) +
+  geom_point(alpha = 0.6, color = "#0D5F79", size = 0.2) +
+  geom_smooth(method='lm', color = "darkgrey") +
+  ylab("Neighborhood Atlas ADI") +
+  xlab("Reproducible ADI") +
+  facet_wrap(~Geography) +
+  theme_bw(base_size = 18)
+```
+  </div>
+</div>
+
+## Agreement between ADI factor loadings (linear regression)
+
+This panel compares the factor loadings (weights) assigned to each socioeconomic indicator in NA-ADI and ReADI across geographic levels. The data frame `ADI_2022_Wt` contains, for each indicator, the original NA-ADI weight (from the Singh tract-level formulation) and the corresponding ReADI weights at the block group (`CBG`), census tract (`CT`), and county (`C`) levels.
+
+We assign descriptive labels to indicators (e.g., income, education, employment, housing), reshape the weights to long format (`sub`) so each row represents an indicator–geography pair, and plot ReADI weights on the x-axis against NA-ADI weights on the y-axis, with points colored by indicator (`Variables`). A linear fit is overlaid in each panel, and `facet_wrap(~Geography)` produces separate panels for block groups, tracts, and counties.
+
+This figure corresponds to Figure 1B in the manuscript and visually summarizes how closely the ReADI factor loadings reproduce the original NA-ADI weights across indicators and geographies.
+
+<div style="margin:16px 0">
+  <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1099">Show Code</button>
+  <div id="code1099" class="collapse">
+```{r}
+load("ADI_2022_Wt.RData")
+
+## Linear regression
+r2 <- summary(lm(CBG ~ NA_ADI, data = ADI_2022_Wt))$r.squared
+ci <- ci.R2(R2 = r2, df.1 = 1, df.2 = nrow(ADI_2022_Wt) - 1 - 1, conf.level = 0.95)
+paste(round(r2, 3), " [95% CI, ", round(ci[[1]], 3), "-", round(ci[[3]], 3), "]", sep = "")
+
+r2 <- summary(lm(CT ~ NA_ADI, data = ADI_2022_Wt))$r.squared
+ci <- ci.R2(R2 = r2, df.1 = 1, df.2 = nrow(ADI_2022_Wt) - 1 - 1, conf.level = 0.95)
+paste(round(r2, 3), " [95% CI, ", round(ci[[1]], 3), "-", round(ci[[3]], 3), "]", sep = "")
+
+r2 <- summary(lm(C ~ NA_ADI, data = ADI_2022_Wt))$r.squared
+ci <- ci.R2(R2 = r2, df.1 = 1, df.2 = nrow(ADI_2022_Wt) - 1 - 1, conf.level = 0.95)
+paste(round(r2, 3), " [95% CI, ", round(ci[[1]], 3), "-", round(ci[[3]], 3), "]", sep = "")
+
+# Weight ranges
+round(range(ADI_2022_Wt$NA_ADI), 3)
+round(range(ADI_2022_Wt$CBG, ADI_2022_Wt$CT, ADI_2022_Wt$C), 3)
+round(range(ReADI_2022_Wt$CBG, ReADI_2022_Wt$CT, ReADI_2022_Wt$C), 3)
+
+## RMSE
+rmse_obs <- Metrics::rmse(ADI_2022_Wt$CBG, ADI_2022_Wt$NA_ADI)
+se_rmse <- sd((ADI_2022_Wt$CBG - ADI_2022_Wt$NA_ADI)^2) / (2 * rmse_obs * sqrt(length(ADI_2022_Wt$CBG)))
+ci <- rmse_obs + c(-1, 1) * qnorm(0.975) * se_rmse
+paste(round(rmse_obs, 3), " (95% CI, ", round(ci[1], 3), "-", round(ci[2], 3), ")", sep = "")
+
+rmse_obs <- Metrics::rmse(ADI_2022_Wt$CT, ADI_2022_Wt$NA_ADI)
+se_rmse <- sd((ADI_2022_Wt$CT - ADI_2022_Wt$NA_ADI)^2) / (2 * rmse_obs * sqrt(length(ADI_2022_Wt$CT)))
+ci <- rmse_obs + c(-1, 1) * qnorm(0.975) * se_rmse
+paste(round(rmse_obs, 3), " (95% CI, ", round(ci[1], 3), "-", round(ci[2], 3), ")", sep = "")
+
+rmse_obs <- Metrics::rmse(ADI_2022_Wt$C, ADI_2022_Wt$NA_ADI)
+se_rmse <- sd((ADI_2022_Wt$C - ADI_2022_Wt$NA_ADI)^2) / (2 * rmse_obs * sqrt(length(ADI_2022_Wt$C)))
+ci <- rmse_obs + c(-1, 1) * qnorm(0.975) * se_rmse
+paste(round(rmse_obs, 3), " (95% CI, ", round(ci[1], 3), "-", round(ci[2], 3), ")", sep = "")
+```
+  </div>
+</div>
+
+### Figure 1B
+
+> Figure 1. Comparison of Neighborhood Atlas Area Deprivation Index (NA-ADI) and Reproducible ADI (ReADI) Scores and Factor Weights at Multiple Geographic Scales. B. Factor weights of economic indicators.
+
+This panel compares the factor loadings (weights) assigned to each socioeconomic indicator in NA-ADI versus ReADI across geographic levels. The data frame `ADI_2022_Wt` contains, for each indicator, the original NA-ADI weight (derived from the Singh tract-level formulation) and the corresponding ReADI weights at the block group (`CBG`), census tract (`CT`), and county (`C`) levels. We:
+
+- Assign a descriptive label to each indicator (for example, median family income, income disparity, below-poverty thresholds, unemployment, housing characteristics).  
+- Reshape the weight data into long format (`sub`), with one row per indicator–geography combination and a variable indicating geography (block group, census tract, county).  
+- Plot ReADI weights on the x-axis and NA-ADI weights on the y-axis, with each point representing one indicator. Points are colored by indicator (`Variables`) and a linear fit is overlaid within each panel.  
+- Use `facet_wrap(~Geography)` so that separate panels show the weight relationships at the block group, tract, and county levels.
+
+This figure corresponds to Figure 1B in the manuscript and visually summarizes how closely the ReADI factor loadings reproduce the original NA-ADI weights across indicators and geographies.
+
+<div>
+  <img src="Images/Figure1B.png" alt="Graph" style="width: 100%;">
+</div>
+
+<div style="margin:16px 0">
+  <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1099">Show Code</button>
+  <div id="code1099" class="collapse">
+```{r, eval = F}
+ADI_2022_Wt$Variables <- c("Median\nFamily Income", "Income Disparity", "Below Poverty\n100%", "Below Poverty\n150%", "Education\n<9yrs", "Education\n>Highschool", "White Collar\nEmployment", "Unemployment", "Median Home\nValue", "Median Rent", "Median Mortgage", "Home Ownership", "Single Parent", "No Vehicle", "No Internet", "No Plumbing", "Crowded Housing")
+
+sub <- melt(ADI_2022_Wt, id.vars =c("Vars", "NA_ADI", "Variables"))
+sub$Geography <- ifelse(sub$variable == "CBG", "Block Group", sub$variable) 
+sub$Geography <- ifelse(sub$variable == "CT", "Census Tract", sub$Geography) 
+sub$Geography <- ifelse(sub$variable == "C", "County", sub$Geography) 
+ggplot(sub, aes(value, NA_ADI, color = Variables, group = Geography)) +
+  geom_smooth(method='lm', color = "darkgrey") +
+  geom_point(alpha = 0.9, size = 5) +
+  scale_color_viridis(discrete = T, option = "H") +
+  xlab("ReADI Weights") +
+  ylab("NA-ADI Weights") +
+  facet_wrap(~Geography) +
+  theme_bw(base_size = 18)
+```
+  </div>
+</div>
+
+<div style="clear: both;"></div>
+<br><br>
+
+## Comparison of correlation between ADI score and indicator with the factor loading of that indicator
+
+In this section we assess whether indicators that are more strongly associated with the ADI scores are also given larger factor loadings, and how this relationship compares between ReADI and NA-ADI across geographic levels. The data frame `ADI_Cor_L` contains, for each indicator and geography (block group, tract, county), the ReADI–indicator correlation (`ReADI_Cor`), the NA-ADI–indicator correlation (`NA_Cor`), the corresponding ReADI loading (`ReADI_Loadings`), the NA-ADI loading (`NA_ADI_Loadings`), and a geography label (`Geo` = "CBG", "CT", "C").
+
+We summarize this relationship separately for ReADI and NA-ADI:
+
+- **ReADI**  
+  - For each geography, fit a simple linear regression of `ReADI_Cor` on `ReADI_Loadings` and extract the R-squared as a measure of how well the ReADI weights explain the pattern of indicator correlations, obtaining 95% CIs with `MBESS::ci.R2()`.  
+  - Compute the RMSE between `ReADI_Cor` and `ReADI_Loadings` using `Metrics::rmse()`, and use `boot::boot()` with 2,000 resamples and `boot.ci(type = "perc")` to obtain bootstrap 95% CIs for the RMSE.  
+  - Summarize the minimum and maximum R-squared and RMSE values (with CIs) across geographies and generate per-geography “R² = … (RMSE, …)” labels used to annotate the ReADI panels.
+
+- **NA-ADI**  
+  - Repeat the same analyses using `NA_Cor` and `NA_ADI_Loadings`, fitting regressions of `NA_Cor` on `NA_ADI_Loadings`, extracting R-squared and CIs, and computing RMSE and bootstrap CIs.  
+  - Summarize ranges across geographies and generate the analogous “R² (RMSE)” labels for the NA-ADI panels.
+
+The printed output from this chunk provides the R-squared and RMSE ranges (with 95% confidence intervals) reported in the Results and the per-geography R-squared/RMSE values displayed alongside the ReADI (Figure 2A) and NA-ADI (Figure 2B) panels.
+
+<div style="margin:16px 0">
+  <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1325">Show Code</button>
+  <div id="code1325" class="collapse">
+```{r, eval = F}
+load("ADI_Cor_L.RData")
+
+## Summary stats
+
+### ReADI
+#### Linear regression
+r2_cbg <- summary(lm(ReADI_Cor ~ ReADI_Loadings, data = ADI_Cor_L[ADI_Cor_L$Geo == "CBG", ]))$r.squared
+ci_cbg <- ci.R2(R2 = r2_cbg, df.1 = 1, df.2 = nrow(ADI_Cor_L[ADI_Cor_L$Geo == "CBG", ]) - 1 - 1, conf.level = 0.95)
+r2_ct <- summary(lm(ReADI_Cor ~ ReADI_Loadings, data = ADI_Cor_L[ADI_Cor_L$Geo == "CT", ]))$r.squared
+ci_ct <- ci.R2(R2 = r2_ct, df.1 = 1, df.2 = nrow(ADI_Cor_L[ADI_Cor_L$Geo == "CT", ]) - 1 - 1, conf.level = 0.95)
+r2_c <- summary(lm(ReADI_Cor ~ ReADI_Loadings, data = ADI_Cor_L[ADI_Cor_L$Geo == "C", ]))$r.squared
+ci_c <- ci.R2(R2 = r2_c, df.1 = 1, df.2 = nrow(ADI_Cor_L[ADI_Cor_L$Geo == "C", ]) - 1 - 1, conf.level = 0.95)
+r2 <- min(r2_cbg, r2_ct, r2_c)
+cil <- min(ci_cbg[[1]], ci_ct[[1]], ci_c[[1]])
+ciu <- max(ci_cbg[[3]], ci_ct[[3]], ci_c[[3]])
+paste("R^2 ≥ ", round(r2,3), " [95% CI, ", round(cil, 3), "-", round(ciu,3), "]", sep = "")
+
+#### RMSE
+rmse_stat <- function(data, indices) {
+  d <- data[indices, ]
+  Metrics::rmse(d$ReADI_Cor, d$ReADI_Loadings)}
+sub <- ADI_Cor_L[ADI_Cor_L$Geo == "CBG", ]
+rmse_cbg <- Metrics::rmse(sub$ReADI_Cor, sub$ReADI_Loadings)
+set.seed(2374)
+b <- boot(sub, statistic = rmse_stat, R = 2000)
+ci_cbg <- boot.ci(b, type = c("perc"))$percent
+sub <- ADI_Cor_L[ADI_Cor_L$Geo == "CT", ]
+rmse_ct <- Metrics::rmse(sub$ReADI_Cor, sub$ReADI_Loadings)
+set.seed(2374)
+b <- boot(sub, statistic = rmse_stat, R = 2000)
+ci_ct <- boot.ci(b, type = c("perc"))$percent
+sub <- ADI_Cor_L[ADI_Cor_L$Geo == "C", ]
+rmse_c <- Metrics::rmse(sub$ReADI_Cor, sub$ReADI_Loadings)
+set.seed(2374)
+b <- boot(sub, statistic = rmse_stat, R = 2000)
+ci_c <- boot.ci(b, type = c("perc"))$percent
+
+rsme <- min(rmse_cbg, rmse_ct, rmse_c)
+cil <- min(ci_cbg[4], ci_ct[4], ci_c[4])
+ciu <- min(ci_cbg[5], ci_ct[5], ci_c[5])
+paste(round(rsme,3), " [95% CI, ", round(cil, 3), "-", round(ciu, 3), "]", sep = "")
+
+rsme <- max(rmse_cbg, rmse_ct, rmse_c)
+cil <- max(ci_cbg[4], ci_ct[4], ci_c[4])
+ciu <- max(ci_cbg[5], ci_ct[5], ci_c[5])
+paste(round(rsme,3), " [95% CI, ", round(cil, 3), "-", round(ciu, 3), "]", sep = "")
+
+## For the figure:
+paste("R^2 = ", round(r2_cbg,3), " (RMSE, ", round(rmse_cbg, 3), ")", sep = "")
+paste("R^2 = ", round(r2_ct,3), " (RMSE, ", round(rmse_ct, 3), ")", sep = "")
+paste("R^2 = ", round(r2_c,3), " (RMSE, ", round(rmse_c, 3), ")", sep = "")
+
+### NA-ADI
+#### Linear regression
+r2_cbg <- summary(lm(NA_Cor ~ NA_ADI_Loadings, data = ADI_Cor_L[ADI_Cor_L$Geo == "CBG", ]))$r.squared
+ci_cbg <- ci.R2(R2 = r2_cbg, df.1 = 1, df.2 = nrow(ADI_Cor_L[ADI_Cor_L$Geo == "CBG", ]) - 1 - 1, conf.level = 0.95)
+r2_ct <- summary(lm(NA_Cor ~ NA_ADI_Loadings, data = ADI_Cor_L[ADI_Cor_L$Geo == "CT", ]))$r.squared
+ci_ct <- ci.R2(R2 = r2_ct, df.1 = 1, df.2 = nrow(ADI_Cor_L[ADI_Cor_L$Geo == "CT", ]) - 1 - 1, conf.level = 0.95)
+r2_c <- summary(lm(NA_Cor ~ NA_ADI_Loadings, data = ADI_Cor_L[ADI_Cor_L$Geo == "C", ]))$r.squared
+ci_c <- ci.R2(R2 = r2_c, df.1 = 1, df.2 = nrow(ADI_Cor_L[ADI_Cor_L$Geo == "C", ]) - 1 - 1, conf.level = 0.95)
+r2 <- min(r2_cbg, r2_ct, r2_c)
+cil <- min(ci_cbg[[1]], ci_ct[[1]], ci_c[[1]])
+ciu <- min(ci_cbg[[3]], ci_ct[[3]], ci_c[[3]])
+paste(round(r2, 3), " [95% CI, ", round(cil, 3), "-", round(ciu, 3), "]", sep = "")
+
+r2 <- max(r2_cbg, r2_ct, r2_c)
+cil <- max(ci_cbg[[1]], ci_ct[[1]], ci_c[[1]])
+ciu <- max(ci_cbg[[3]], ci_ct[[3]], ci_c[[3]])
+paste(round(r2, 3), " [95% CI, ", round(cil, 3), "-", round(ciu, 3), "]", sep = "")
+
+#### RMSE 
+rmse_stat <- function(data, indices) {
+  d <- data[indices, ]
+  Metrics::rmse(d$NA_Cor, d$NA_ADI_Loadings)}
+
+sub <- ADI_Cor_L[ADI_Cor_L$Geo == "CBG", ]
+rmse_cbg <- Metrics::rmse(sub$NA_Cor, sub$NA_ADI_Loadings)
+set.seed(3756)
+b <- boot(sub, statistic = rmse_stat, R = 2000)
+ci_cbg <- boot.ci(b, type = c("perc"))$percent
+
+sub <- ADI_Cor_L[ADI_Cor_L$Geo == "CT", ]
+rmse_ct <- Metrics::rmse(sub$NA_Cor, sub$NA_ADI_Loadings)
+set.seed(3756)
+b <- boot(sub, statistic = rmse_stat, R = 2000)
+ci_ct <- boot.ci(b, type = c("perc"))$percent
+
+sub <- ADI_Cor_L[ADI_Cor_L$Geo == "C", ]
+rmse_c <- Metrics::rmse(sub$NA_Cor, sub$NA_ADI_Loadings)
+set.seed(3756)
+b <- boot(sub, statistic = rmse_stat, R = 2000)
+ci_c <- boot.ci(b, type = c("perc"))$percent
+
+rsme <- min(rmse_cbg, rmse_ct, rmse_c)
+cil <- min(ci_cbg[4], ci_ct[4], ci_c[4])
+ciu <- min(ci_cbg[5], ci_ct[5], ci_c[5])
+paste(round(rsme,3), " [95% CI, ", round(cil, 3), "-", round(ciu, 3), "]", sep = "")
+
+rsme <- max(rmse_cbg, rmse_ct, rmse_c)
+cil <- max(ci_cbg[4], ci_ct[4], ci_c[4])
+ciu <- max(ci_cbg[5], ci_ct[5], ci_c[5])
+paste(round(rsme,3), " [95% CI, ", round(cil, 3), "-", round(ciu, 3), "]", sep = "")
+
+## For the figure:
+paste("R^2 = ", round(r2_cbg,3), " (RMSE, ", round(rmse_cbg, 3), ")", sep = "")
+paste("R^2 = ", round(r2_ct,3), " (RMSE, ", round(rmse_ct, 3), ")", sep = "")
+paste("R^2 = ", round(r2_c,3), " (RMSE, ", round(rmse_c, 3), ")", sep = "")
+```
+  </div>
+</div>
+
+<div style="clear: both;"></div>
+<br><br>
+
+
+### Figure 2A (ReADI) & 2B (NA-ADI)
+
+> Figure 2. Consistency Between Area Deprivation Index (ADI) Component Correlations and Factor Loadings Across Geographic Levels. A. ReADI scores. B. NA-ADI scores.
+
+These panels show, for each ADI component and geography, the correlation of that component with the ADI score alongside its factor loading, to visually assess how well the weighting scheme aligns with how strongly each indicator relates to the score.
+
+Using the long-format `ADI_Cor_L` object, we:
+- select, for each geography (block group, census tract, county), the indicator name (`Variables`), geography (`Geography`), and either  
+  - ReADI correlations and loadings (`ReADI_Cor`, `ReADI_Loadings`) for Figure 2A, or  
+  - NA-ADI correlations and loadings (`NA_Cor`, `NA_ADI_Loadings`) for Figure 2B;
+- convert `Variables` to a factor and order indicators by their correlation with the corresponding ADI score at the block group level, then carry this ordering across all geographies so indicators appear in a consistent order; and  
+- reshape to long format and plot side-by-side bars (correlation vs loading) for each indicator using `facet_wrap(~Geography)` and `coord_flip()` for readability.
+
+Figure 2A shows ReADI correlations versus ReADI loadings; Figure 2B shows NA-ADI correlations versus the original Singh loadings. The per-panel R² and RMSE values and their bootstrap confidence intervals are computed in the preceding chunk and used to annotate the manuscript figures.
+
+<div><img src="Images/Figure2A.png" alt="Graph" style="width: 100%;"></div>
+
+<div><img src="Images/Figure2B.png" alt="Graph" style="width: 100%;"></div>
+
+Figure notes: RMSE is root mean squared error. Variables are ordered by the correlation of the respective ADI with each indicator. CIs were obtained by nonparametric bootstrap (R = 2000); small differences may arise if the bootstrap is re-run with a different random seed.
+
+<div style="margin:16px 0">
+  <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1495">Show Code</button>
+  <div id="code1495" class="collapse">
+```{r, eval = F}
+load("ADI_Cor_L.RData")
+
+## Figures
+# A
+sub <- ADI_Cor_L[, c("Variables", "Geography", "ReADI_Cor", "ReADI_Loadings")]
+sub$Variables <- as.factor(sub$Variables)
+sub$Variables <- factor(sub$Variables, levels = sub$Variables[order(sub[sub$Geography == "Block Group", "ReADI_Cor"])])
+sub$Geography <- factor(sub$Geography, levels = c("Block Group", "Census Tract", "County"))
+sub <- melt(sub, id.vars =c("Variables", "Geography"))
+ggplot(sub, aes(x = Variables, y = value, fill = variable)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  coord_flip() +
+  #ylim(0,24) +
+  xlab("ADI Components") +
+  ylab("Loadings") +
+  facet_wrap(~ Geography) +
+  scale_fill_manual(name = "Measure", labels = c("ReADI Correlations", "ReADI Loadings"), values = c("#d8b365", "#5ab4ac")) +
+  theme_bw(base_size = 18)
+
+# B
+sub <- ADI_Cor_L[, c("Variables", "Geography", "NA_Cor", "NA_ADI_Loadings")]
+sub$Variables <- as.factor(sub$Variables)
+sub$Variables <- factor(sub$Variables, levels = sub$Variables[order(sub[sub$Geography == "Block Group", "NA_Cor"])])
+sub$Geography <- factor(sub$Geography, levels = c("Block Group", "Census Tract", "County"))
+sub <- melt(sub, id.vars =c("Variables", "Geography"))
+ggplot(sub, aes(x = Variables, y = value, fill = variable)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  coord_flip() +
+  #ylim(0,24) +
+  xlab("ADI Components") +
+  ylab("Loadings") +
+  facet_wrap(~Geography) +
+  scale_fill_manual(name = "Measure", labels = c("NA-ADI Correlations", "Singh Loadings"), values = c("#d8b365", "#5ab4ac")) +
+  theme_bw(base_size = 18)
+```
+  </div>
+</div>
+
+<div style="clear: both;"></div>
+<br><br>
+
+## Correlation of ADIs with SDI, SVI, FDep, and NSS7
+
+Here we compare ReADI and NA-ADI to several widely used deprivation and vulnerability indices across geographic levels:
+
+- Social Deprivation Index (SDI)  
+- Social Vulnerability Index (SVI)  
+- French Deprivation Index (FDep)  
+- Neighborhood Stress Score (NSS7)
+
+For each geography (block group, census tract, county), we:
+
+- merge the ADI datasets (`ADI_CBG_Data`, `ADI_CT_Data`, `ADI_C_Data`) with the corresponding SDVI datasets (`SDVI_CBG_2022`, `SDVI_CT_2022`, `SDVI_C_2022`) by `GEOID`, keeping ReADI deciles (`ReADI_xtile`), NA-ADI (`NA_ADI`), FDep, SDI, SVI, and NSS7, and relabel the columns to a common set of names (`sdvi_names`);  
+- restrict to complete cases and compute Pearson correlation matrices among the six indices, using a helper (`cor_mtest`) to obtain 95% confidence intervals and storing, for each geography, matrices of correlations (`cor`) and lower/upper CI bounds (`cil`, `ciu`); and  
+- extract, for ReADI and NA-ADI in turn, the correlations (and CI bounds) with the other indices (excluding the correlation between ReADI and NA-ADI itself) and use `range_across_geos()` to obtain the minimum and maximum correlations and corresponding 95% CI bounds across CBG, CT, and C.
+
+The printed outputs give the minimum and maximum correlations (with 95% CIs) for ReADI and NA-ADI versus SDI, SVI, FDep, and NSS7 across geographies, corresponding to the correlation ranges reported in the Results.
+
+<div style="margin:16px 0">
+  <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1571">Show Code</button>
+  <div id="code1571" class="collapse">
+```{r, eval = F}
+load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/Other_Indices/SDVI_CBG_2022.RData"))
+load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/Other_Indices/SDVI_CT_2022.RData"))
+load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/Other_Indices/SDVI_C_2022.RData"))
+load("ADI_CBG_Data.RData")
+load("ADI_CT_Data.RData")
+load("ADI_C_Data.RData")
+
+sdvi_names <- c("Reproducible\nADI", "Neighborhood\n Atlas ADI", "French\nDeprivation Index", "Social\nDeprivation Index", "Social\nVulnerability Index", "Neighborhood\nStress Score")
+
+CBG <- ADI_CBG_Data[, c("GEOID", "ReADI_xtile", "NA_ADI")]
+SDVI_CBG_2022 <- SDVI_CBG_2022[, c("GEOID", "FDep", "SDI", "SVI", "NSS7")]
+CBG <- plyr::join(CBG, SDVI_CBG_2022, by = "GEOID", type = "left")
+CBG$GEOID <- NULL
+colnames(CBG) <- sdvi_names
+
+CT <- ADI_CT_Data[, c("GEOID", "ReADI_xtile", "NA_ADI")]
+SDVI_CT_2022 <- SDVI_CT_2022[, c("GEOID", "FDep", "SDI", "SVI", "NSS7")]
+CT <- plyr::join(CT, SDVI_CT_2022, by = "GEOID", type = "left")
+CT$GEOID <- NULL
+colnames(CT) <- sdvi_names
+
+C <- ADI_C_Data[, c("GEOID", "ReADI_xtile", "NA_ADI")]
+SDVI_C_2022 <- SDVI_C_2022[, c("GEOID", "FDep", "SDI", "SVI", "NSS7")]
+C <- plyr::join(C, SDVI_C_2022, by = "GEOID", type = "left")
+C$GEOID <- NULL
+colnames(C) <- sdvi_names
+
+# Stats
+drop_naadi  <- "Neighborhood\n Atlas ADI"
+drop_readi  <- "Reproducible\nADI"
+
+# correlation or CI matrix with diagonal NA
+cor_ci_mat <- function(df, what = c("cor", "lowCI", "uppCI")) {
+  what  <- match.arg(what)
+  df_cc <- df[complete.cases(df), ]
+  if (what == "cor") {
+    m <- cor(df_cc)} else {
+    ci <- cor.mtest(df_cc)
+    m  <- ci[[what]]
+  }
+  diag(m) <- NA
+  as.data.frame(m)
+}
+# drop a given index from rows/cols
+drop_index <- function(m, idx_label) {
+  m[!rownames(m) %in% idx_label,
+    !colnames(m) %in% idx_label]
+}
+# get min/max across CBG/CT/C for a given column and matrix type
+range_across_geos <- function(mats, which_mat, col, drop_label) {
+  vals <- sapply(mats, function(x) {
+    drop_index(x[[which_mat]], drop_label)[[col]]
+  })
+  c(min = min(vals, na.rm = TRUE),
+    max = max(vals, na.rm = TRUE))
+}
+CBG_stats <- list(cor = cor_ci_mat(CBG, what = "cor"), cil = cor_ci_mat(CBG, what = "lowCI"), ciu = cor_ci_mat(CBG, what = "uppCI"))
+CT_stats <- list(cor = cor_ci_mat(CT, what = "cor"), cil = cor_ci_mat(CT, what = "lowCI"), ciu = cor_ci_mat(CT, what = "uppCI"))
+C_stats <- list(cor = cor_ci_mat(C, what = "cor"), cil = cor_ci_mat(C, what = "lowCI"), ciu = cor_ci_mat(C, what = "uppCI"))
+all_stats <- list(CBG = CBG_stats, CT = CT_stats, C = C_stats)
+
+re_cor <- range_across_geos(all_stats, "cor", col = "Reproducible\nADI", drop_label = drop_naadi)
+re_cil <- range_across_geos(all_stats, "cil", col = "Reproducible\nADI", drop_label = drop_naadi)
+re_ciu <- range_across_geos(all_stats, "ciu", col = "Reproducible\nADI", drop_label = drop_naadi)
+paste(round(re_cor["min"], 3), " (95% CI, ", round(re_cil["min"], 3), "-", round(re_ciu["min"], 3), ")", sep = "")
+paste(round(re_cor["max"], 3), " (95% CI, ", round(re_cil["max"], 3), "-", round(re_ciu["max"], 3), ")", sep = "")
+
+na_cor <- range_across_geos(all_stats, "cor", col = "Neighborhood\n Atlas ADI", drop_label = drop_readi)
+na_cil <- range_across_geos(all_stats, "cil", col = "Neighborhood\n Atlas ADI", drop_label = drop_readi)
+na_ciu <- range_across_geos(all_stats, "ciu", col = "Neighborhood\n Atlas ADI", drop_label = drop_readi)
+
+paste(round(na_cor["min"], 3), " (95% CI, ", round(na_cil["min"], 3), "-", round(na_ciu["min"], 3), ")", sep = "")
+paste(round(na_cor["max"], 3), " (95% CI, ", round(na_cil["max"], 3), "-", round(na_ciu["max"], 3), ")", sep = "")
+```
+  </div>
+</div>
+
+### Figure 3
+
+> Figure 3. Pearson Correlations Between the Reproducible Area Deprivation Index (ReADI) and Neighborhood Atlas ADI (NA-ADI) and the 3 Established Deprivation Indices Across Geographic Levels A. Block Group. B. Census Tract. C. County.
+
+This figure shows the correlation structure among ReADI, NA-ADI, and four other area-based indices (SDI, SVI, FDep, NSS7) at each geographic level. Using the `CBG`, `CT`, and `C` datasets (block groups, tracts, counties), we restrict to complete cases, compute Pearson correlation matrices for the six indices, and plot the upper triangle of each matrix with `corrplot()`. Rows and columns are ordered by the first principal component (`order = "FPC"`) so indices with similar correlation patterns cluster together, and we apply a Bonferroni-adjusted significance threshold (`sig.level = 0.05/15`) using p-values from `cor.mtest()`. Numeric correlation coefficients are overlaid and each panel is labeled “Block Group,” “Census Tract,” or “County”.
+
+The resulting three-panel plot reproduces Figure 3 in the manuscript and illustrates how consistently ReADI and NA-ADI align with SDI, SVI, FDep, and NSS7 across block group, tract, and county geographies.
+
+<div>
+  <img src="Images/Figure3.png" alt="Graph" style="width: 100%;">
+</div>
+
+Figure notes: Results are ordered based on the first principal component.  
+The SDI, FDep, and NSS7 creation script is located in [NSS7_FDep_SDI_2022_Creation.Rmd](https://github.com/ngladish/Publications/blob/main/Gladish_2025_ReADI_Creation/NSS7_FDep_SDI_2022_Creation.Rmd)
+
+<div style="margin:16px 0">
+  <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1674">Show Code</button>
+  <div id="code1674" class="collapse">
+```{r, eval = F}
+op <- par(mfrow = c(1, 3))
+corrplot(cor(CBG[complete.cases(CBG),]), method = 'circle', order = "FPC", diag = FALSE, type = 'upper', p.mat = cor.mtest(CBG)$p, sig.level = 0.05/15, addCoef.col ='white', number.cex = 1.5, col = COL2('PuOr', 10), tl.col = 'black', tl.cex = 1.5)
+mtext("Block Group", side = 3, line = -5, cex = 2, font = 2)
+
+corrplot(cor(CT[complete.cases(CT),]), method = 'circle', order = "FPC", diag = FALSE, type = 'upper', p.mat = cor.mtest(CT)$p, sig.level = 0.05/15, addCoef.col ='white', number.cex = 1.5, col = COL2('PuOr', 10), tl.col = 'black', tl.cex = 1.5)
+mtext("Census Tract", side = 3, line = -5, cex = 2, font = 2)
+
+corrplot(cor(C[complete.cases(C),]), method = 'circle', order = "FPC", diag = FALSE, type = 'upper', p.mat = cor.mtest(C)$p, sig.level = 0.05/15, addCoef.col ='white', number.cex = 1.5, col = COL2('PuOr', 10), tl.col = 'black', tl.cex = 1.5)
+mtext("County", side = 3, line = -5, cex = 2, font = 2)
+par(op)
+```
+  </div>
+</div>
+
+<div style="clear: both;"></div>
+<br><br>
+
+## Distribution of the difference between the ReADI from the NA-ADI
+
+Here we summarize how much NA-ADI and ReADI differ numerically at each geographic level. In `ADI_CBG_Data`, `ADI_CT_Data`, and `ADI_C_Data`, the variable `Diff_NA_ReADI` gives the difference between NA-ADI and ReADI for each unit (on the 0–100 ADI scale).
+
+For each geography (block group, tract, county), we:
+- compute the range (minimum to maximum) and standard deviation of `Diff_NA_ReADI` among non-missing observations, and print these as “min to max (SD, sd_value)” to describe how far the indices can diverge; and  
+- count how many units have an absolute difference of at least 20 points (`Diff_NA_ReADI <= -20` or `>= 20`), and report this as “X of N units (Y%)”, corresponding to the “discrepancies of 20 points or greater” statistics in the Results.
+
+The geometry object `ACS_C_2022_Geometry.RData` is loaded here in preparation for later county-level maps of these differences, but is not used directly in this summary chunk.
+
+<div style="margin:16px 0">
+  <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1637">Show Code</button>
+  <div id="code1637" class="collapse">
+```{r, eval = F}
+load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/ACS_C_2022_Geometry.RData"))
+load("ADI_CBG_Data.RData")
+load("ADI_C_Data.RData")
+load("ADI_CT_Data.RData")
+
+# Stats
+## Range of difference by geography
+range <- range(ADI_CBG_Data$Diff_NA_ReADI, na.rm = T)
+sd <- sd(ADI_CBG_Data$Diff_NA_ReADI, na.rm = T)
+paste(round(range[1], 1), " to ", round(range[2], 1), " (SD, ", round(sd, 1), ")", sep = "")
+
+range <- range(ADI_CT_Data$Diff_NA_ReADI, na.rm = T)
+sd <- sd(ADI_CT_Data$Diff_NA_ReADI, na.rm = T)
+paste(round(range[1], 1), " to ", round(range[2], 1), " (SD, ", round(sd, 1), ")", sep = "")
+
+range <- range(ADI_C_Data$Diff_NA_ReADI, na.rm = T)
+sd <- sd(ADI_C_Data$Diff_NA_ReADI, na.rm = T)
+paste(round(range[1], 1), " to ", round(range[2], 1), " (SD, ", round(sd, 1), ")", sep = "")
+
+## Amount different by 20 points by geo
+ADI_CBG_Data <- ADI_CBG_Data[!is.na(ADI_CBG_Data$Diff_NA_ReADI),]
+disc_20 <- sum(ADI_CBG_Data$Diff_NA_ReADI <= -20 | ADI_CBG_Data$Diff_NA_ReADI >= 20, na.rm = T) 
+paste(round(disc_20, 1), " of ", round(nrow(ADI_CBG_Data), 1), " (", round(100*(disc_20/nrow(ADI_CBG_Data)),1), "%)", sep = "")
+
+ADI_CT_Data <- ADI_CT_Data[!is.na(ADI_CT_Data$Diff_NA_ReADI),]
+disc_20 <- sum(ADI_CT_Data$Diff_NA_ReADI <= -20 | ADI_CT_Data$Diff_NA_ReADI >= 20, na.rm = T) 
+paste(round(disc_20, 1), " of ", round(nrow(ADI_CT_Data), 1), " (", round(100*(disc_20/nrow(ADI_CT_Data)),1), "%)", sep = "")
+
+ADI_C_Data <- ADI_C_Data[!is.na(ADI_C_Data$Diff_NA_ReADI),]
+disc_20 <- sum(ADI_C_Data$Diff_NA_ReADI <= -20 | ADI_C_Data$Diff_NA_ReADI >= 20, na.rm = T) 
+paste(round(disc_20, 1), " of ", round(nrow(ADI_C_Data), 1), " (", round(100*(disc_20/nrow(ADI_C_Data)),1), "%)", sep = "")
+```
+  </div>
+</div>
+
+<div style="clear: both;"></div>
+<br><br>
+
+### Figure 4
+
+> Figure 4. County-Level Map of Score Differences Between the Neighborhood Atlas Area Deprivation Index (ADI) and Reproducible ADI
+
+The county geometry objects used here (`ACS_CBG_2022_Geometry`, `ACS_CT_2022_Geometry`, and `ACS_C_2022_Geometry`) are created in the ReADI construction script [ReADI_2022_Creation.Rmd](https://github.com/ngladish/ReADI/blob/main/2018-2022/ReADI_2022_Creation.Rmd). For Figure 4, we join the county-level ADI data (`ADI_C_Data`) to `ACS_C_2022_Geometry` by GEOID and map the difference between NA-ADI and ReADI (`Diff_NA_ReADI`) on the 0–100 ADI scale. The color scale is centered at zero and fixed from −100 to 100: red (negative) values indicate counties where the Neighborhood Atlas ADI underestimates deprivation relative to ReADI, and green (positive) values indicate counties where it overestimates deprivation.
+
+<div>
+  <img src="Images/Figure4.pdf" alt="Graph" style="width: 100%;">
+</div>
+
+<div style="margin:16px 0">
+  <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1689">Show Code</button>
+  <div id="code1689" class="collapse">
+```{r, eval = F}
+ACS_C_2022_Geometry <- ACS_C_2022_Geometry %>% shift_geometry() %>% left_join(ADI_C_Data, by = "GEOID")
+ggplot() + 
+  geom_sf(data = ACS_C_2022_Geometry, aes(fill = Diff_NA_ReADI)) + 
+  scale_fill_gradientn(colours = rev(ocean.curl(200)), limits = c(-100,100), name = "ADI Difference", guide = "colourbar") +
+  theme_void() +
+  theme(plot.title = element_text(size = 30, face = "bold", hjust = 0.5))
+```
+  </div>
+</div>
+
+<div style="clear: both;"></div>
+<br><br>
+
+### eFigure 1
+***
+
+> eFigure 1. U.S. county-level deprivation scores for the Neighborhood Atlas ADI and Reproducible ADI.
+
+For this figure we map county-level NA-ADI and ReADI scores side by side on a common 0–100 deprivation scale. We:
+
+- load the county geometry object `ACS_C_2022_Geometry` and apply `shift_geometry()` to reposition Alaska and Hawaii for display;  
+- join `ACS_C_2022_Geometry` to `ADI_C_Data` by `GEOID` so each county polygon has its NA-ADI score (`NA_ADI`) and ReADI score (`ReADI_C_NR`); and  
+- create two `geom_sf()` maps, one filled by `NA_ADI` and one by `ReADI_C_NR`, using `scale_fill_viridis_c(limits = c(0, 100), name = "ADI Score")` so both panels share an identical color scale.
+
+Scores range from 0 (dark blue) to 100 (light green), with 100 indicating the most deprived counties. The resulting two-panel map reproduces eFigure 1 in the manuscript and allows a direct visual comparison of the national deprivation patterns produced by NA-ADI versus ReADI.
+
+<div>
+  <img src="Images/eFigure1.pdf" alt="Graph" style="width: 100%;">
+</div>
+
+<div style="margin:16px 0">
+  <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1722">Show Code</button>
+  <div id="code1722" class="collapse">
+```{r, eval = F}
+load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/ACS_C_2022_Geometry.RData"))
+load("ADI_C_Data.RData")
+ACS_C_2022_Geometry <- ACS_C_2022_Geometry %>% shift_geometry() %>% left_join(ADI_C_Data, by = "GEOID")
+
+op <- par(mfrow = c(1, 2))
+ggplot() + 
+  geom_sf(data = ACS_C_2022_Geometry, aes(fill = NA_ADI)) + 
+  scale_fill_viridis_c(limits = c(0,100), name = "ADI Score") +
+  ggtitle("Neighborhood Atlas ADI") +
+  theme_void() +
+  theme(plot.title = element_text(size = 30, face = "bold", hjust = 0.5))
+
+ggplot() + 
+  geom_sf(data = ACS_C_2022_Geometry, aes(fill = ReADI_C_NR)) + 
+  scale_fill_viridis_c(limits = c(0,100), name = "ADI Score") +
+  ggtitle("Reproducible ADI") +
+  theme_void() +
+  theme(plot.title = element_text(size = 30, face = "bold", hjust = 0.5))
+par(op)
+```
+  </div>
+</div>
+
+<div style="clear: both;"></div>
+<br><br>
+
+## Differences between rural and urban CT ADI differences
+
+In this section we test whether the discrepancy between NA-ADI and ReADI (`Diff_NA_ReADI`) differs between rural and urban areas at the tract and block-group levels, and how large these gaps are both nationally and by state. The datasets `ADI_CT_Data` and `ADI_CBG_Data` contain, for each tract or block group, the NA-ADI vs ReADI difference (`Diff_NA_ReADI`) and an urban–rural classification (`urban_label` = "Urban" or "Rural"). The objects `CT_region_summary` and `CBG_region_summary` store pre-computed, state-level summaries of these differences by urban status.
+
+We proceed in several steps:
+
+1. **Tract-level (CT) rural vs urban summaries and Welch t-test**  
+   - For tracts, we first tabulate, separately for rural and urban areas, the number and percentage of units where the NA-ADI score exceeds the ReADI score (`Diff_NA_ReADI > 0`), along with the mean and standard deviation of `Diff_NA_ReADI` within each group.  
+   - We then run a Welch two-sample t-test (`t.test(Diff_NA_ReADI ~ urban_label, data = ADI_CT_Data)`) to compare the mean NA-ADI minus ReADI difference between rural and urban tracts. From this model we extract the t statistic, 95% confidence interval for the mean difference, and p-value, and format them as “Welch t, 95% CI, P < …” for reporting in the Results.
+
+2. **Block-group (CBG) rural vs urban summaries and Welch t-test**  
+   - For block groups, we repeat the same analysis: obtain the mean and standard deviation of `Diff_NA_ReADI` in rural and urban areas, and fit a Welch t-test comparing the mean difference between the two groups.  
+   - We extract rural and urban means and SDs, the t statistic, 95% confidence interval, and p-value, and summarize them in a single formatted string for inclusion in the text.
+
+3. **Standardized effect sizes (Cohen’s d)**  
+   - After restricting to non-missing `Diff_NA_ReADI`, we compute Cohen’s d for the rural–urban difference at both geographies using `effectsize::cohens_d(Diff_NA_ReADI ~ urban_label, ci = 0.95)`.  
+   - These effect sizes provide a standardized measure of the magnitude of the rural–urban gap in NA-ADI vs ReADI differences.
+
+4. **Quantile regression for rural–urban differences across the distribution**  
+   - To assess whether rural–urban differences are present across the distribution of `Diff_NA_ReADI` (not only at the mean), we fit quantile regression models `rq(Diff_NA_ReADI ~ urban_label, tau = c(0.25, 0.5, 0.75))` separately for tracts and block groups.  
+   - For each model we extract the coefficient for `urban_labelUrban` at the 25th, 50th, and 75th percentiles (tau = 0.25, 0.50, 0.75) and report them as “t(25%), t(50%), t(75%)”, which quantify the rural–urban gap at lower, median, and upper parts of the discrepancy distribution.
+
+5. **State-level rural–urban gaps (CT and CBG)**  
+   - Using `CT_region_summary` and `CBG_region_summary`, which contain, by state and urban status, the mean `Diff_NA_ReADI`, its standard deviation, and the number of units, we compute state-specific rural–urban gaps at the tract and block-group levels.  
+   - For each state with both urban and rural observations, we calculate the mean difference gap (urban mean minus rural mean), its standard error based on the group-specific SDs and sample sizes, and a 95% confidence interval (gap ± 1.96 × SE).  
+   - We then identify, separately for tracts and block groups, the state with the largest absolute rural–urban gap and extract its gap and confidence interval. These extremes are formatted as “tract: gap [95% CI, lower to upper]; block group: gap [95% CI, lower to upper]” for reporting.
+
+The printed outputs from this chunk provide the rural and urban means and standard deviations of `Diff_NA_ReADI`, Welch t-test summaries, Cohen’s d effect sizes, quantile-regression coefficients, and the largest state-level rural–urban gaps at the tract and block-group levels, which together underpin the descriptive and inferential results presented alongside eFigure 2.
+
+<div style="margin:16px 0">
+  <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1782">Show Code</button>
+  <div id="code1782" class="collapse">
+```{r, eval = F}
+load("ADI_CBG_Data.RData")
+load("ADI_CT_Data.RData")
+load("CT_region_summary.RData")
+load("CBG_region_summary.RData")
+
+# Stats
+# WELCH t.test ##############################################################  
+## CT
+### Rural vs Urban
+rural <- nrow(ADI_CT_Data[ADI_CT_Data$urban_label == "Rural",])
+overrep <- nrow(ADI_CT_Data[ADI_CT_Data$Diff_NA_ReADI > 0 & ADI_CT_Data$urban_label == "Rural",])
+perc <- round((overrep/rural)*100,1)
+mean <- t.test(Diff_NA_ReADI ~ urban_label, data = ADI_CT_Data)$estimate[["mean in group Rural"]]
+sd <- sd(ADI_CT_Data[ADI_CT_Data$urban_label == "Rural", "Diff_NA_ReADI"], na.rm = TRUE)
+paste("(", overrep, " of ", rural, " [", perc, "%]; rural mean, ", round(mean, 2), " [SD, ", round(sd, 2), "])", sep = "")
+
+urban <- nrow(ADI_CT_Data[ADI_CT_Data$urban_label == "Urban",])
+underep <- nrow(ADI_CT_Data[ADI_CT_Data$Diff_NA_ReADI > 0 & ADI_CT_Data$urban_label == "Urban",])
+perc <- round((underep/urban)*100,1)
+mean <- t.test(Diff_NA_ReADI ~ urban_label, data = ADI_CT_Data)$estimate[["mean in group Urban"]]
+sd <- sd(ADI_CT_Data[ADI_CT_Data$urban_label == "Urban", "Diff_NA_ReADI"], na.rm = TRUE)
+paste("(", underep, " of ", urban, " [", perc, "%]; urban mean, ", round(mean, 2), " [SD, ", round(sd, 2), "])", sep = "")
+
+### Overall
+welch <- t.test(Diff_NA_ReADI ~ urban_label, data = ADI_CT_Data)$statistic
+cil <- t.test(Diff_NA_ReADI ~ urban_label, data = ADI_CT_Data)$conf.int[1]
+ciu <- t.test(Diff_NA_ReADI ~ urban_label, data = ADI_CT_Data)$conf.int[2]
+pval <- ifelse(t.test(Diff_NA_ReADI ~ urban_label, data = ADI_CT_Data)$p.value < 0.001, 0.001, t.test(Diff_NA_ReADI ~ urban_label, data = ADI_CT_Data)$conf.int[2])
+paste("(Welch t, ", round(welch, 1), "; 95% CI, ", round(cil, 2), "-", round(ciu, 2), "; P <", pval, ")", sep = "")
+
+## CBG 
+### Overall
+rural_mean <- t.test(Diff_NA_ReADI ~ urban_label, data = ADI_CBG_Data)$estimate[["mean in group Rural"]]
+rural_sd <- sd(ADI_CBG_Data[ADI_CBG_Data$urban_label == "Rural", "Diff_NA_ReADI"], na.rm = TRUE)
+urban_mean <- t.test(Diff_NA_ReADI ~ urban_label, data = ADI_CBG_Data)$estimate[["mean in group Urban"]]
+urban_sd <- sd(ADI_CBG_Data[ADI_CBG_Data$urban_label == "Urban", "Diff_NA_ReADI"], na.rm = TRUE)
+welch <- t.test(Diff_NA_ReADI ~ urban_label, data = ADI_CBG_Data)$statistic
+cil <- t.test(Diff_NA_ReADI ~ urban_label, data = ADI_CBG_Data)$conf.int[1]
+ciu <- t.test(Diff_NA_ReADI ~ urban_label, data = ADI_CBG_Data)$conf.int[2]
+pval <- ifelse(t.test(Diff_NA_ReADI ~ urban_label, data = ADI_CBG_Data)$p.value < 0.001, 0.001, t.test(Diff_NA_ReADI ~ urban_label, data = ADI_CBG_Data)$conf.int[2])
+paste("(rural mean, ", round(rural_mean, 2), " [SD, ", round(rural_sd, 2), "]; urban mean, ", round(urban_mean, 4), " [SD, ", round(urban_sd, 2), "]; Welch t, ", round(welch, 3), " [95% CI, ", round(cil, 2), "-", round(ciu, 2), "]; P <", pval, "; 95% CI, ", sep = "")
+
+# Cohen d ############################################################## 
+ADI_CBG_Data <- ADI_CBG_Data[!is.na(ADI_CBG_Data$Diff_NA_ReADI),]
+ADI_CT_Data <- ADI_CT_Data[!is.na(ADI_CT_Data$Diff_NA_ReADI),]
+round(cohens_d(Diff_NA_ReADI ~ urban_label, data = ADI_CBG_Data, ci = 0.95)$Cohens_d, 2)
+round(cohens_d(Diff_NA_ReADI ~ urban_label, data = ADI_CT_Data, ci = 0.95)$Cohens_d, 2)
+
+# Quantile regression ############################################################## 
+
+qr_model <- rq(Diff_NA_ReADI ~ urban_label, data = ADI_CT_Data, tau = c(0.25, 0.5, 0.75))
+t25 <- qr_model$coefficients["urban_labelUrban", "tau= 0.25"]
+t50 <- qr_model$coefficients["urban_labelUrban", "tau= 0.50"]
+t75 <- qr_model$coefficients["urban_labelUrban", "tau= 0.75"]
+paste("t(25%) = ", t25, "; t(50%) = ", t50, "; t(75%) = ", t75, sep = "")
+
+qr_model <- rq(Diff_NA_ReADI ~ urban_label, data = ADI_CBG_Data, tau = c(0.25, 0.5, 0.75))
+t25 <- qr_model$coefficients["urban_labelUrban", "tau= 0.25"]
+t50 <- qr_model$coefficients["urban_labelUrban", "tau= 0.50"]
+t75 <- qr_model$coefficients["urban_labelUrban", "tau= 0.75"]
+paste("t(25%) = ", t25, "; t(50%) = ", t50, "; t(75%) = ", t75, sep = "")
+
+## Regional Summary
+
+# CT ----------------------------------------
+
+CT_urban_rural_gap <- as.data.frame(t(sapply(unique(CT_region_summary$state_name), function(state) {
+  # Extract per-group values
+  m_u <- CT_region_summary$mean_diff[CT_region_summary$state_name == state & CT_region_summary$urban_label == "Urban"]
+  m_r <- CT_region_summary$mean_diff[CT_region_summary$state_name == state & CT_region_summary$urban_label == "Rural"]
+  
+  sd_u <- CT_region_summary$sd_diff[CT_region_summary$state_name == state & CT_region_summary$urban_label == "Urban"]
+  sd_r <- CT_region_summary$sd_diff[CT_region_summary$state_name == state & CT_region_summary$urban_label == "Rural"]
+  
+  n_u <- CT_region_summary$n_tracts[CT_region_summary$state_name == state & CT_region_summary$urban_label == "Urban"]
+  n_r <- CT_region_summary$n_tracts[CT_region_summary$state_name == state & CT_region_summary$urban_label == "Rural"]
+
+  if (length(m_u) == 1 && length(m_r) == 1) {
+    gap <- m_u - m_r
+    se_gap <- sqrt((sd_u^2 / n_u) + (sd_r^2 / n_r))
+    ci_lower <- gap - 1.96 * se_gap
+    ci_upper <- gap + 1.96 * se_gap
+    return(c(gap = gap, se = se_gap, ci_lower = ci_lower, ci_upper = ci_upper))
+  } else {
+    return(c(gap = NA, se = NA, ci_lower = NA, ci_upper = NA))
+  }})))
+CT_urban_rural_gap <- CT_urban_rural_gap[!is.na(CT_urban_rural_gap$gap),]
+
+## CBG
+CBG_urban_rural_gap <- as.data.frame(t(sapply(unique(CBG_region_summary$state_name), function(state) {
+  # Extract per-group values
+  m_u <- CBG_region_summary$mean_diff[CBG_region_summary$state_name == state & CBG_region_summary$urban_label == "Urban"]
+  m_r <- CBG_region_summary$mean_diff[CBG_region_summary$state_name == state & CBG_region_summary$urban_label == "Rural"]
+  
+  sd_u <- CBG_region_summary$sd_diff[CBG_region_summary$state_name == state & CBG_region_summary$urban_label == "Urban"]
+  sd_r <- CBG_region_summary$sd_diff[CBG_region_summary$state_name == state & CBG_region_summary$urban_label == "Rural"]
+  
+  n_u <- CBG_region_summary$n_cbgs[CBG_region_summary$state_name == state & CBG_region_summary$urban_label == "Urban"]
+  n_r <- CBG_region_summary$n_cbgs[CBG_region_summary$state_name == state & CBG_region_summary$urban_label == "Rural"]
+  
+  # Only compute if both Urban and Rural are present
+  if (length(m_u) == 1 && length(m_r) == 1) {
+    gap <- m_u - m_r
+    se_gap <- sqrt((sd_u^2 / n_u) + (sd_r^2 / n_r))
+    ci_lower <- gap - 1.96 * se_gap
+    ci_upper <- gap + 1.96 * se_gap
+    return(c(gap = gap, se = se_gap, ci_lower = ci_lower, ci_upper = ci_upper))
+  } else {
+    return(c(gap = NA, se = NA, ci_lower = NA, ci_upper = NA))
+  }})))
+CBG_urban_rural_gap <- CBG_urban_rural_gap[!is.na(CBG_urban_rural_gap$gap),]
+
+CT_gap <- CT_urban_rural_gap[abs(CT_urban_rural_gap$gap) == max(abs(CT_urban_rural_gap$gap)), "gap"]
+CT_cil <- CT_urban_rural_gap[abs(CT_urban_rural_gap$gap) == max(abs(CT_urban_rural_gap$gap)), "ci_lower"]
+CT_ciu <- CT_urban_rural_gap[abs(CT_urban_rural_gap$gap) == max(abs(CT_urban_rural_gap$gap)), "ci_upper"]
+CBG_gap <- CBG_urban_rural_gap[abs(CBG_urban_rural_gap$gap) == max(abs(CBG_urban_rural_gap$gap)), "gap"]
+CBG_cil <- CBG_urban_rural_gap[abs(CBG_urban_rural_gap$gap) == max(abs(CBG_urban_rural_gap$gap)), "ci_lower"]
+CBG_ciu <- CBG_urban_rural_gap[abs(CBG_urban_rural_gap$gap) == max(abs(CBG_urban_rural_gap$gap)), "ci_upper"]
+
+paste("(tract: ", round(CT_gap ,1) , " [95% CI, ", round(CT_cil ,1), " to ", round(CT_ciu ,1), "]; block group: ", round(CBG_gap ,1) , " [95% CI, ", round(CBG_cil ,1), " to ", round(CBG_ciu ,1), "])", sep = "")
+```
+  </div>
+</div>
+
+<div style="clear: both;"></div>
+<br><br>
+
+### eFigure2
+
+>eFigure 2. Mean difference between the Neighborhood Atlas (NA-ADI) and Reproducible Area Deprivation Index (ReADI) by state, regions, and area type. A. CBG. B. CT.
+
+This figure summarizes how the difference between NA-ADI and ReADI (`Diff_NA_ReADI`) varies by state, region, and area type (urban vs rural) at the block-group and tract levels. The objects `CBG_region_summary` and `CT_region_summary` contain, for each state and `urban_label` ("Urban" or "Rural"):
+
+- the mean NA-ADI minus ReADI difference (`mean_diff`),
+- its standard error (`se_diff`),
+- the number of units contributing to the estimate, and
+- the Census region (`region`).
+
+Positive mean differences indicate that NA-ADI tends to give higher (more deprived) scores than ReADI in that state–area type; negative values indicate lower NA-ADI scores relative to ReADI.
+
+For panel A (CBG), we:
+
+- use `ggplot(CBG_region_summary, ...)` with `mean_diff` on the y-axis and states on the x-axis (reordered by `mean_diff`),  
+- draw separate bars for urban and rural areas within each state using `geom_col(position = position_dodge())`,  
+- add ±1 SE error bars around each mean using `geom_errorbar()` and the pre-computed `se_diff`,  
+- flip the axes with `coord_flip()` so states are listed vertically, and  
+- facet by Census region (`facet_wrap(~ region, scales = "free_y")`) to show within-region patterns while keeping states readable.
+
+For panel B (CT), we repeat the same plotting strategy using `CT_region_summary` to display tract-level mean differences by state, region, and urban/rural status.
+
+Together, these plots (eFigure 2A for block groups, 2B for tracts) visualize the geographic and urban–rural variation in NA-ADI vs ReADI differences that underlie the national and state-level summaries described in the Results and in the preceding rural–urban analysis.
+
+<div>
+  <img src="Images/eFigure2.pdf" alt="Graph" style="width: 100%;">
+</div>
+
+<div style="margin:16px 0">
+  <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1942">Show Code</button>
+  <div id="code1942" class="collapse">
+```{r, eval = F}
+load("CBG_region_summary.RData")
+load("CT_region_summary.RData")
+
+ggplot(CBG_region_summary, aes(x = reorder(state_name, mean_diff), y = mean_diff, fill = urban_label)) +
+  geom_col(position = position_dodge(width = 0.9), width = 0.9) +
+  geom_errorbar(
+    aes(ymin = mean_diff - se_diff, ymax = mean_diff + se_diff),
+    position = position_dodge(width = 0.9),
+    width = 0.3
+  ) +
+  coord_flip() +
+  facet_wrap(~ region, scales = "free_y") +
+  scale_fill_manual(values = c("Urban" = "steelblue", "Rural" = "darkorange"), name = "Area Type") +
+  theme_minimal(base_size = 18) +
+  labs(x = "State", y = "Mean Difference (±SE)")
+
+ggplot(CT_region_summary, aes(x = reorder(state_name, mean_diff), y = mean_diff, fill = urban_label)) +
+  geom_col(position = position_dodge(width = 0.9), width = 0.9) +
+  geom_errorbar(
+    aes(ymin = mean_diff - se_diff, ymax = mean_diff + se_diff),
+    position = position_dodge(width = 0.9),
+    width = 0.3
+  ) +
+  coord_flip() +
+  facet_wrap(~ region, scales = "free_y") +
+  scale_fill_manual(values = c("Urban" = "steelblue", "Rural" = "darkorange"), name = "Area Type") +
+  theme_minimal(base_size = 18) +
+  labs(x = "State", y = "Mean Difference (±SE)") 
+```
+  </div>
+</div>
+
+<div style="clear: both;"></div>
+<br><br>
+
+## Correlation of ADI score differences with composite measures
+
+In this section we examine how the difference between NA-ADI and ReADI relates to individual indicators and composite measures across geographies. The data frame `ADI_Diff_Cor` contains, for each indicator or composite measure and each geography (county, census tract, block group):
+
+- the Pearson correlation between that variable and the NA-ADI vs ReADI difference (`Cor`, where the “NA-ADI error” is `Diff_NA_ReADI`),  
+- the indicator or composite name (`Variables`),  
+- the geographic level (`Geo` = "C", "CT", "CBG"), and  
+- an ordering variable (`Ord`) used to control the display order on the x-axis.
+
+These correlations are used to quantify which components and composite measures are most strongly associated with NA-ADI error at each geographic level and to produce the bar plot in eFigure 3.
+
+### eFigure 3
+***
+
+> eFigure 3. Correlations between socioeconomic indicators and the difference between the Neighborhood Atlas (NA-ADI) and the Reproducible Area Deprivation Index (ReADI) across geographies.
+
+<div>
+  <img src="Images/eFigure3.pdf" alt="Graph" style="width: 100%;">
+</div>
+
+Pearson’s correlations are presented. All associations were statistically significant after adjusting for multiple comparisons (p < 9×10⁻⁵). C is county, CBG is Census Block Group, CT is Census Tract.
+
+<div style="margin:16px 0">
+  <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code2003">Show Code</button>
+  <div id="code2003" class="collapse">
+```{r, eval = F}
+load("ADI_Diff_Cor.RData")
+
+ggplot(ADI_Diff_Cor, aes(x = Ord, y = Cor, fill = Variables)) +
+  geom_bar(stat = "identity") +
+  facet_wrap(~Geo, scales = "free_x", drop = T, nrow = 2) +
+  theme_light(base_size = 18) +
+  ylab("Correlation to NA-ADI Error") +
+  theme(axis.text.x = element_blank(), axis.title.x = element_blank(), axis.ticks.x = element_blank(), strip.background =element_rect(fill="#474F58"), axis.title.y=element_text(size=22), legend.title = element_text(size = 18),legend.text = element_text(size = 12)) +
+  guides(fill = guide_legend(override.aes = list(size = 7))) 
+```
+  </div>
+</div>
+
+## Mortality analysis 2015
+
+In this section we compare how well the Neighborhood Atlas ADI (NA-ADI) versus the Reproducible ADI (ReADI) explain 2015 life expectancy at the census tract level, and how any performance advantage varies across tracts where the two indices disagree by different amounts.
+
+Using `ADI_Mortality_Data` and tract-level population counts from `Pop_Total_2015`, we:
+
+1. **Build the analytic dataset and disagreement bins**
+
+   - Join tract-level mortality and ADI data to `Pop_Total_2015` using `GEOID`.  
+   - Restrict to tracts with non-missing 2015 life expectancy (`Life_Expectancy`), NA-ADI (`NA_ADI_CT_NR`), ReADI (`ReADI_CT_NR`), and population (`Pop_Total_2015`).  
+   - Compute the tract-level difference between NA-ADI and ReADI (`NA_ReADI_2015_Diff = NA_ADI_CT_NR − ReADI_CT_NR`) and its absolute value (`abs_diff`).  
+   - Log-transform tract population (replace `Pop_Total_2015` with its natural log) for use as an adjustment covariate.  
+   - Classify tracts into four disagreement bins based on `abs_diff`: 0–9, 10–19, 20–39, and 40–100 points. These bins are stored in the variable `bin`.
+
+2. **Estimate R² and 95% CIs for NA-ADI and ReADI within each bin**
+
+   Within each disagreement bin, we fit two sets of linear models with life expectancy as the outcome:
+
+   - **Unadjusted models**  
+     - Life expectancy regressed on NA-ADI alone.  
+     - Life expectancy regressed on ReADI alone.
+
+   - **Population-adjusted models**  
+     - Life expectancy regressed on NA-ADI plus log population.  
+     - Life expectancy regressed on ReADI plus log population.
+
+   For each model we:
+   - extract the R-squared (proportion of variance in life expectancy explained),  
+   - record the sample size used for that model,  
+   - obtain 95% confidence intervals for R-squared using `MBESS::ci.R2()` (which uses the model’s degrees of freedom), and  
+   - pull the p-value for the ADI term from the regression output.
+
+   These results are collected in `results` (unadjusted) and `results_pop` (population-adjusted), with one row per ADI (NA vs Re) per disagreement bin.
+
+3. **Compute the difference in explanatory power (ΔR²) between ReADI and NA-ADI**
+
+   To directly compare performance, we focus on the difference in R-squared between the ReADI and NA-ADI models within each bin. For a given bin, we take the R-squared from the ReADI model and subtract the R-squared from the NA-ADI model; this difference is the change in explained variance when moving from NA-ADI to ReADI.
+
+   For each bin and model type (unadjusted and adjusted), we:
+
+   - compute this R-squared difference (ΔR²),  
+   - approximate the standard error of ΔR² using the usual large-sample formulas based on the R-squared values and the number of tracts, and  
+   - convert ΔR² and its standard error into a z-statistic and a two-sided p-value.  
+
+   These “analytic” p-values are what you used originally and are still reported.
+
+4. **Use bootstrap confidence intervals for ΔR²**
+
+   Because the difference in R-squared is not a simple linear function of the data, we supplement the analytic p-values with bootstrap confidence intervals:
+
+   - For each bin, and for each model type (unadjusted and adjusted), we run a nonparametric bootstrap with 1,000 resamples of tracts, using a single global random seed (`set.seed(2567)`) to make the results reproducible.  
+   - In each bootstrap sample we refit the NA-ADI model and the ReADI model and recompute the R-squared difference between them.  
+   - We then summarize the bootstrap distribution of R-squared differences by taking the 2.5th and 97.5th percentiles as the lower and upper limits of the 95% confidence interval.
+
+   This logic is implemented in `r2_diff_one_boot()`, which returns the observed R-squared difference, the bootstrap lower and upper confidence limits, and the analytic p-value. Applying this function within each bin yields `r2_diff` for the unadjusted models and `r2_diff_pop` for the population-adjusted models, with rows corresponding to the four disagreement bins (0–9, 10–19, 20–39, 40–100).
+
+5. **Generate formatted results for the manuscript**
+
+   Finally, we extract the R-squared difference, its 95% confidence interval, and the p-value for the bins reported in the paper (for example, the 20–39 and 40–100-point disagreement bins) and format them into text snippets such as:
+
+   > “R² difference, 0.064; 95% CI, 0.017–0.111; P = 0.008”
+
+   These snippets are what appear in the mortality Results section and in the text accompanying the mortality figure.
+
+   The “OLD” code block at the end of this chunk keeps the earlier analytic-only approach (without bootstrap) for reference. The main manuscript now uses the bootstrapped confidence intervals for the R-squared differences, together with the analytic p-values.
+
+<div style="margin:16px 0">
+  <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code2086">Show Code</button>
+  <div id="code2086" class="collapse">
+```{r, eval = F}
+load("Pop_Total_2015.RData")
+load("ADI_Mortality_Data.RData")
+Pop_Total_2015 <- Pop_Total_2015[, c("GEOID", "Pop_Total_2015")]
+
+dat <- ADI_Mortality_Data %>%
+  mutate(NA_ReADI_2015_Diff = NA_ADI_CT_NR - ReADI_CT_NR) %>%
+  plyr::join(Pop_Total_2015, by = "GEOID") %>%
+  tidyr::drop_na(Life_Expectancy, NA_ADI_CT_NR, ReADI_CT_NR, Pop_Total_2015) %>%
+  mutate(
+    Pop_Total_2015 = log(Pop_Total_2015),
+    abs_diff       = abs(NA_ReADI_2015_Diff),
+    bin            = cut(
+      abs_diff,
+      breaks = c(0, 10, 20, 40, 100),   # 40–100 bin; if max ever >100, change back to Inf
+      labels = c("0–9","10–19","20–39","40–100"),
+      right  = FALSE
+    )
+  )
+
+## R2 + CI for each model (same logic as before)
+r2_ci <- function(model, adi_var) {
+  s  <- summary(model)
+  R2 <- s$r.squared
+  n  <- stats::nobs(model)
+  p  <- length(coef(model)) - 1
+  ci <- MBESS::ci.R2(
+    R2         = R2,
+    df.1       = p,
+    df.2       = n - p - 1,
+    conf.level = 0.95
+  )
+  cs <- coef(s)
+  if (adi_var %in% rownames(cs)) {
+    pval <- cs[adi_var, "Pr(>|t|)"]
+  } else {
+    pval <- if (nrow(cs) >= 2) cs[2, "Pr(>|t|)"] else NA_real_
+  }
+  c(
+    R2  = R2,
+    LCL = ci$Lower.Conf.Limit.R2,
+    UCL = ci$Upper.Conf.Limit.R2,
+    n   = n,
+    p   = pval
+  )
+}
+
+## unadjusted models: Life_Expectancy ~ ADI
+fit_one <- function(df, adi_var) {
+  stats::lm(stats::as.formula(paste("Life_Expectancy ~", adi_var)), data = df)
+}
+
+results <- as.data.frame(
+  dat %>%
+    dplyr::group_by(bin) %>%
+    dplyr::group_modify(~{
+      m_na <- fit_one(.x, "NA_ADI_CT_NR")
+      m_re <- fit_one(.x, "ReADI_CT_NR")
+      c_na <- r2_ci(m_na, "NA_ADI_CT_NR")
+      c_re <- r2_ci(m_re, "ReADI_CT_NR")
+      tibble::tibble(
+        ADI = c("Neighborhood Atlas","Reproducible"),
+        R2  = c(c_na["R2"],  c_re["R2"])  |> as.numeric(),
+        LCL = c(c_na["LCL"], c_re["LCL"]) |> as.numeric(),
+        UCL = c(c_na["UCL"], c_re["UCL"]) |> as.numeric(),
+        n   = c(c_na["n"],   c_re["n"])   |> as.integer(),
+        p   = c(c_na["p"],   c_re["p"])   |> as.numeric()
+      )
+    }) %>%
+    dplyr::ungroup()
+)
+
+results$ADI <- factor(results$ADI, levels = c("Reproducible","Neighborhood Atlas"))
+
+## pop-adjusted models: Life_Expectancy ~ ADI + Pop_Total_2015
+fit_one_pop <- function(df, adi_var) {
+  stats::lm(
+    stats::as.formula(paste("Life_Expectancy ~", adi_var, "+ Pop_Total_2015")),
+    data = df
+  )
+}
+
+results_pop <- as.data.frame(
+  dat %>%
+    dplyr::group_by(bin) %>%
+    dplyr::group_modify(~{
+      m_na <- fit_one_pop(.x, "NA_ADI_CT_NR")
+      m_re <- fit_one_pop(.x, "ReADI_CT_NR")
+      c_na <- r2_ci(m_na, "NA_ADI_CT_NR")
+      c_re <- r2_ci(m_re, "ReADI_CT_NR")
+      tibble::tibble(
+        ADI = c("Neighborhood Atlas","Reproducible"),
+        R2  = c(c_na["R2"],  c_re["R2"])  |> as.numeric(),
+        LCL = c(c_na["LCL"], c_re["LCL"]) |> as.numeric(),
+        UCL = c(c_na["UCL"], c_re["UCL"]) |> as.numeric(),
+        n   = c(c_na["n"],   c_re["n"])   |> as.integer(),
+        p   = c(c_na["p"],   c_re["p"])   |> as.numeric()
+      )
+    }) %>%
+    dplyr::ungroup()
+)
+
+results_pop$ADI <- factor(results_pop$ADI, levels = c("Reproducible","Neighborhood Atlas"))
+
+## ---- R2 difference: Fisher-z p + bootstrap CI for diff_R2 ----
+
+set.seed(2567)  # single global seed for all bootstraps
+
+r2_diff_one_boot <- function(df, pop_adjusted = FALSE, nboot = 1000) {
+  n <- nrow(df)
+
+  ## observed models and diff_R2
+  if (pop_adjusted) {
+    m_na0 <- lm(Life_Expectancy ~ NA_ADI_CT_NR + Pop_Total_2015, data = df)
+    m_re0 <- lm(Life_Expectancy ~ ReADI_CT_NR   + Pop_Total_2015, data = df)
+  } else {
+    m_na0 <- lm(Life_Expectancy ~ NA_ADI_CT_NR, data = df)
+    m_re0 <- lm(Life_Expectancy ~ ReADI_CT_NR,   data = df)
+  }
+  r2_na0  <- summary(m_na0)$r.squared
+  r2_re0  <- summary(m_re0)$r.squared
+  diff_R2 <- r2_re0 - r2_na0
+
+  ## your analytic SE + p-value
+  se_diff <- sqrt(
+    (1 - r2_na0^2) / (n - 2) +
+    (1 - r2_re0^2) / (n - 2)
+  )
+  z_stat <- diff_R2 / se_diff
+  p_val  <- 2 * (1 - pnorm(abs(z_stat)))
+
+  ## bootstrap CI for diff_R2
+  boot_vals <- numeric(nboot)
+  for (b in seq_len(nboot)) {
+    idx <- sample.int(n, n, replace = TRUE)
+    d   <- df[idx, , drop = FALSE]
+
+    if (pop_adjusted) {
+      m_na <- lm(Life_Expectancy ~ NA_ADI_CT_NR + Pop_Total_2015, data = d)
+      m_re <- lm(Life_Expectancy ~ ReADI_CT_NR   + Pop_Total_2015, data = d)
+    } else {
+      m_na <- lm(Life_Expectancy ~ NA_ADI_CT_NR, data = d)
+      m_re <- lm(Life_Expectancy ~ ReADI_CT_NR,   data = d)
+    }
+
+    r2_na <- summary(m_na)$r.squared
+    r2_re <- summary(m_re)$r.squared
+    boot_vals[b] <- r2_re - r2_na
+  }
+
+  ci <- stats::quantile(boot_vals, c(0.025, 0.975), na.rm = TRUE)
+
+  data.frame(
+    diff_R2  = diff_R2,
+    LCL_diff = unname(ci[1]),
+    UCL_diff = unname(ci[2]),
+    p_diff   = p_val
+  )
+}
+
+## unadjusted R2 difference by bin
+r2_diff <- as.data.frame(
+  dat %>%
+    dplyr::group_by(bin) %>%
+    dplyr::group_modify(~r2_diff_one_boot(.x, pop_adjusted = FALSE, nboot = 1000)) %>%
+    dplyr::ungroup()
+)
+rownames(r2_diff) <- c("b0_9", "b10_19", "b20_39", "b40")
+
+## pop-adjusted R2 difference by bin
+r2_diff_pop <- as.data.frame(dat %>% dplyr::group_by(bin) %>% dplyr::group_modify(~r2_diff_one_boot(.x, pop_adjusted = TRUE, nboot = 1000)) %>% plyr::ungroup())
+rownames(r2_diff_pop) <- c("b0_9", "b10_19", "b20_39", "b40")
+
+## text snippets (unchanged logic, no p-adjustment)
+
+diff_r2 <- r2_diff["b20_39", "diff_R2"]
+cil     <- r2_diff["b20_39", "LCL_diff"]
+ciu     <- r2_diff["b20_39", "UCL_diff"]
+pval    <- r2_diff["b20_39", "p_diff"]
+pval_print <- ifelse(pval < 0.001, 0.001, pval)
+
+paste("(R2 difference, ", round(diff_r2, 3), "; 95% CI, ", round(cil, 3), "-", round(ciu, 3), "; P<", round(pval_print, 3), ")", sep = "")
+
+diff_r2 <- r2_diff["b40", "diff_R2"]
+cil     <- r2_diff["b40", "LCL_diff"]
+ciu     <- r2_diff["b40", "UCL_diff"]
+pval    <- r2_diff["b40", "p_diff"]
+pval_print <- ifelse(pval < 0.001, 0.001, pval)
+
+paste("(R2 difference, ", round(diff_r2, 3), "; 95% CI, ", round(cil, 3), "-", round(ciu, 3), "; P=", round(pval_print, 3), ")", sep = "")
+
+diff_r2 <- r2_diff_pop["b40", "diff_R2"]
+cil     <- r2_diff_pop["b40", "LCL_diff"]
+ciu     <- r2_diff_pop["b40", "UCL_diff"]
+pval    <- r2_diff_pop["b40", "p_diff"]
+pval_print <- ifelse(pval < 0.001, 0.001, pval)
+
+paste("(R2 difference, ", round(diff_r2, 3), "; 95% CI, ", round(cil, 3), "-", round(ciu, 3), "; P=", round(pval_print, 3), ")", sep = "")
+
+############ OLD ################
+load("Pop_Total_2015.RData")
+load("ADI_Mortality_Data.RData")
+Pop_Total_2015 <- Pop_Total_2015[, c("GEOID", "Pop_Total_2015")]
+
+dat <- ADI_Mortality_Data %>%
+  mutate(NA_ReADI_2015_Diff = NA_ADI_CT_NR - ReADI_CT_NR) %>%
+  plyr::join(Pop_Total_2015, by = "GEOID") %>%
+  tidyr::drop_na(Life_Expectancy, NA_ADI_CT_NR, ReADI_CT_NR, Pop_Total_2015) %>%
+  mutate(Pop_Total_2015 = log(Pop_Total_2015), abs_diff = abs(NA_ReADI_2015_Diff), bin = cut(abs_diff, breaks = c(0, 10, 20, 40, Inf), labels = c("0–9","10–19","20–39","40–100"), right = FALSE))
+
+r2_ci <- function(model, adi_var) {
+  s  <- summary(model)
+  R2 <- s$r.squared
+  n  <- stats::nobs(model)
+  p  <- length(coef(model)) - 1  
+  ci <- MBESS::ci.R2(R2 = R2, df.1 = p, df.2 = n - p - 1, conf.level = 0.95)
+  cs <- coef(s)
+  if (adi_var %in% rownames(cs)) {
+    pval <- cs[adi_var, "Pr(>|t|)"]
+  } else {pval <- if (nrow(cs) >= 2) cs[2, "Pr(>|t|)"] else NA_real_}
+c(R2= R2, LCL = ci$Lower.Conf.Limit.R2, UCL = ci$Upper.Conf.Limit.R2, n = n, p  = pval)
+}
+
+fit_one <- function(df, adi_var) {stats::lm(stats::as.formula(paste("Life_Expectancy ~", adi_var)), data = df)}
+results <- as.data.frame(dat %>% dplyr::group_by(bin) %>%
+  dplyr::group_modify(~{
+    m_na <- fit_one(.x, "NA_ADI_CT_NR")
+    m_re <- fit_one(.x, "ReADI_CT_NR")
+    c_na <- r2_ci(m_na, "NA_ADI_CT_NR")
+    c_re <- r2_ci(m_re, "ReADI_CT_NR")
+    tibble::tibble(
+      ADI = c("Neighborhood Atlas","Reproducible"),
+      R2  = c(c_na["R2"],  c_re["R2"])  |> as.numeric(),
+      LCL = c(c_na["LCL"], c_re["LCL"]) |> as.numeric(),
+      UCL = c(c_na["UCL"], c_re["UCL"]) |> as.numeric(),
+      n   = c(c_na["n"],   c_re["n"])   |> as.integer(),
+      p   = c(c_na["p"],   c_re["p"])   |> as.numeric()
+    )}) %>%
+  dplyr::ungroup())
+results <- results %>% mutate(ADI = factor(ADI, levels = c("Reproducible","Neighborhood Atlas")))
+
+fit_one <- function(df, adi_var) {stats::lm(stats::as.formula(paste("Life_Expectancy ~", adi_var, "+ Pop_Total_2015")), data = df)}
+results_pop <- as.data.frame(dat %>%
+  dplyr::group_by(bin) %>%
+  dplyr::group_modify(~{
+    m_na <- fit_one(.x, "NA_ADI_CT_NR")
+    m_re <- fit_one(.x, "ReADI_CT_NR")
+    c_na <- r2_ci(m_na, "NA_ADI_CT_NR")
+    c_re <- r2_ci(m_re, "ReADI_CT_NR")
+    tibble::tibble(
+      ADI = c("Neighborhood Atlas","Reproducible"),
+      R2  = c(c_na["R2"],  c_re["R2"])  |> as.numeric(),
+      LCL = c(c_na["LCL"], c_re["LCL"]) |> as.numeric(),
+      UCL = c(c_na["UCL"], c_re["UCL"]) |> as.numeric(),
+      n   = c(c_na["n"],   c_re["n"])   |> as.integer(),
+      p   = c(c_na["p"],   c_re["p"])   |> as.numeric()
+    )}) %>%
+  dplyr::ungroup())
+results_pop <- results_pop %>% mutate(ADI = factor(ADI, levels = c("Reproducible","Neighborhood Atlas")))
+
+r2_diff <- as.data.frame(results %>%
+  group_by(bin) %>%
+  summarise(
+    R2_NA   = R2[ADI == "Neighborhood Atlas"],
+    R2_Re   = R2[ADI == "Reproducible"],
+    n       = unique(n),
+    .groups = "drop"
+  ) %>% mutate(diff_R2 = R2_Re - R2_NA, 
+    z_diff = diff_R2/sqrt((1 - R2_NA^2)/(n - 2) + (1 - R2_Re^2)/(n - 2)),
+    se_diff = diff_R2 / z_diff,
+    LCL_diff = diff_R2 - 1.96 * se_diff,
+    UCL_diff = diff_R2 + 1.96 * se_diff,
+    p_diff = 2 * (1 - pnorm(abs(z_diff))), 
+    adj.p = p_diff/4))
+rownames(r2_diff) <- c("b0_9", "b10_19", "b20_39", "b40")
+
+r2_diff_pop <- as.data.frame(results_pop %>%
+  group_by(bin) %>%
+  summarise(
+    R2_NA   = R2[ADI == "Neighborhood Atlas"],
+    R2_Re   = R2[ADI == "Reproducible"],
+    n       = unique(n),
+    .groups = "drop"
+  ) %>% mutate(diff_R2 = R2_Re - R2_NA, 
+    z_diff = diff_R2/sqrt((1 - R2_NA^2)/(n - 2) + (1 - R2_Re^2)/(n - 2)),
+    se_diff = diff_R2 / z_diff,
+    LCL_diff = diff_R2 - 1.96 * se_diff,
+    UCL_diff = diff_R2 + 1.96 * se_diff,
+    p_diff = 2 * (1 - pnorm(abs(z_diff))), 
+    adj.p = p_diff/4))
+rownames(r2_diff_pop) <- c("b0_9", "b10_19", "b20_39", "b40")
+
+
+
+```
+  </div>
+</div>
+
+<div style="clear: both;"></div>
+<br><br>
+
+### Figure 5
+
+> Figure 5. Comparison of How Each Area Deprivation Index (ADI) Is Associated With Mortality by Level of Score Disagreement. A. Mortality ~ ADI and B. Mortality ~ ADI + Population Size.
+
+This figure compares how strongly each ADI predicts 2015 life expectancy within strata defined by how far NA-ADI and ReADI disagree at the tract level. Using the mortality dataset and disagreement bins described in the previous section, each census tract is assigned to one of four categories based on the absolute difference between NA-ADI and ReADI: 0–9, 10–19, 20–39, and 40–100 points. These bins contain approximately 31,700, 19,300, 11,400, and 3,300 tracts, respectively, and the same bins are used for all models.
+
+For each bin we fit two sets of linear regression models:
+
+- **Panel A (unadjusted):** life expectancy regressed on NA-ADI alone and on ReADI alone.  
+- **Panel B (population-adjusted):** life expectancy regressed on NA-ADI plus log population, and on ReADI plus log population.
+
+From each model we take the R-squared and its 95% confidence interval (from `MBESS::ci.R2()`), and store these in `results` (unadjusted) and `results_pop` (adjusted). The plotted points in each panel are the R-squared values for NA-ADI and ReADI within each disagreement bin, and the vertical lines are their 95% confidence intervals. The x-axis shows the NA-ADI vs ReADI disagreement category; the y-axis shows the proportion of variance in life expectancy explained.
+
+To assess whether ReADI explains significantly more variance in life expectancy than NA-ADI within a given bin, we use the analytic test on the difference in R-squared described in the mortality section (converted to a z-statistic with a two-sided p-value), and apply a Bonferroni-corrected significance threshold of p < 0.0125 for the four bins. Bins where this difference is statistically significant are marked with an asterisk in the corresponding panel (for example, in the 20–39 and 40–100 bins in the unadjusted models, and the 40–100 bin in the population-adjusted models).
+
+<div>
+  <img src="Images/Figure5.pdf" alt="Graph" style="width: 100%;">
+</div>
+
+<div style="margin:16px 0">
+  <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code2409">Show Code</button>
+  <div id="code2409" class="collapse">
+```{r, eval = F}
+ggplot(results, aes(x = bin, y = R2, color = ADI)) +
+  geom_point(size = 4, position = position_dodge(width = 0.55)) +
+  geom_errorbar(aes(ymin = LCL, ymax = UCL), width = 0.18, position = position_dodge(width = 0.55), linewidth = 0.7) +
+  annotate("text", x = 3, y = 0.25, label = "*", size = 10) +  # for ≥20-40
+  annotate("text", x = 4, y = 0.2, label = "*", size = 10) +  # for ≥40-100
+  theme_light(base_size = 18) +
+  theme(legend.position = "none") +
+  labs(title = "Mortality ~ ADI",
+    x = "Absolute ADI Difference",
+    y = expression(R^2),
+    color = "ADI") +
+  scale_color_manual(
+    values = c("Reproducible" = "#5ab4ac", "Neighborhood Atlas" = "#d8b365"),
+    breaks = c("Reproducible","Neighborhood Atlas"),
+    labels = c("Reproducible","Neighborhood\nAtlas"))+
+  coord_cartesian(ylim = c(0, 0.65))
+
+ggplot(results_pop, aes(x = bin, y = R2, color = ADI)) +
+  geom_point(size = 4, position = position_dodge(width = 0.55)) +
+  geom_errorbar(aes(ymin = LCL, ymax = UCL), width = 0.18, position = position_dodge(width = 0.55), linewidth = 0.7) +
+  annotate("text", x = 4, y = 0.25, label = "*", size = 10) +  # for ≥40-100
+  labs(
+    title = "Mortality ~ ADI + Population Size",
+    x = "Absolute ADI Difference",
+    y = expression(R^2),
+    color = "ADI"
+  ) +
+  scale_color_manual(
+    values = c("Reproducible" = "#5ab4ac", "Neighborhood Atlas" = "#d8b365"),
+    breaks = c("Reproducible","Neighborhood Atlas"),
+    labels = c("Reproducible","Neighborhood\nAtlas")
+  ) +
+  theme_light(base_size = 18) +
+  coord_cartesian(ylim = c(0, 0.65))  
+```
+  </div>
+</div>
+
+<div style="clear: both;"></div>
+<br><br>
+
+# Summary and Reproducibility Notes
+
+This script walks from raw and intermediate data objects to all main summary statistics and figures used in the manuscript. Starting from pre-constructed ReADI and NA-ADI scores at the block group, tract, and county levels, it:
+
+- quantifies agreement between NA-ADI and ReADI scores and factor loadings across geographies;
+- compares how each index aligns with other commonly used deprivation and vulnerability measures (SDI, SVI, FDep, NSS7);
+- characterizes where and how NA-ADI and ReADI scores diverge numerically, including urban–rural and state-level patterns; and
+- evaluates whether ReADI’s differences from NA-ADI translate into changes in explained variance for 2015 life expectancy, overall and within bins defined by the magnitude of NA-ADI vs ReADI disagreement.
+
+Given the input `.RData` objects referenced above, running this R Markdown from top to bottom should reproduce all reported point estimates, confidence intervals, and figures (up to expected minor variation in bootstrap-based intervals when different random seeds are used). Key analytic choices—such as disagreement bin cutpoints, the number of bootstrap resamples, and the p-value thresholds used for multiple-comparison control—are defined explicitly in the code and can be modified if users wish to explore alternative specifications.
+
+Researchers who want to adapt these analyses (for other years, geographies, or outcomes) can reuse the structure of this script by:
+- replacing the input data objects with analogous datasets that contain ReADI, NA-ADI, and relevant comparison indices;
+- updating variable names where necessary; and
+- adjusting bin definitions, model formulas, and plotting code to match their new setting.
+
+All dependencies are standard R packages listed at the top of the script. If numeric discrepancies arise, the most common sources are differences in package versions, random seeds for bootstrap procedures, or upstream data preprocessing.
