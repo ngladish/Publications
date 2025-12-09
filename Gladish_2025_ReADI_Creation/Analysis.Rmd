@@ -177,7 +177,7 @@ The code below:
 <div style="margin:16px 0">
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code199">Show Code</button>
   <div id="code199" class="collapse">
-```{r, eval = F}
+```{r}
 NA_ADI_CBG_2022 <- read.csv("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/NA_ADI/2018-2022/US_2022_ADI_Census_Block_Group_v4_0_1.csv", colClasses = c(FIPS = "character"), stringsAsFactors = FALSE)
 # Sanity checks: FIPS is already a 12-digit unique ID per row
 stopifnot(all(nchar(NA_ADI_CBG_2022$FIPS) == 12), 
@@ -206,7 +206,7 @@ This results in 83,722 census tracts with tract-level NA-ADI scores.
 <div style="margin:16px 0">
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code234">Show Code</button>
   <div id="code234" class="collapse">
-```{r, eval = F}
+```{r}
 load("NA_ADI_CBG_2022.RData")
 
 #Basic sanity checks on NA_ADI_CBG_2022
@@ -269,7 +269,7 @@ There were a total of 3,214 counties resulting from this.
 <div style="margin:16px 0">
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code599">Show Code</button>
   <div id="code599" class="collapse">
-```{r, eval = F}
+```{r}
 load("NA_ADI_CBG_2022.RData")
 load("ACS_2022_PopSize_CBG.RData")
 
@@ -320,7 +320,7 @@ There were 5,323 CBGs with NAs leaving 215,010 CBGs for analysis.
 <div style="margin:16px 0">
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code354">Show Code</button>
   <div id="code354" class="collapse">
-```{r, eval = F}
+```{r}
 NA_ADI_CBG_2015 <- read.table("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/NA_ADI/2011-2015/US_2015_ADI_Census_Block_Group_v3.1.txt", sep = ",", header = T, row.names = 1, colClasses = c(FIPS = "character"), stringsAsFactors = FALSE)
 # Sanity checks: FIPS is already a 12-digit unique ID per row
 stopifnot(all(nchar(NA_ADI_CBG_2015$FIPS) == 12), 
@@ -349,7 +349,7 @@ These tract-level 2015 NA-ADI scores are then merged to the CDC mortality data f
 <div style="margin:16px 0">
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code581">Show Code</button>
   <div id="code518" class="collapse">
-```{r, eval = F}
+```{r}
 load("NA_ADI_CBG_2015.RData")
 
 #Basic sanity checks on NA_ADI_CBG_2022
@@ -425,7 +425,7 @@ For the main analyses we use 2018–2022 ReADI at the census block group (CBG), 
 <div style="margin:16px 0">
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code462">Show Code</button>
   <div id="code462" class="collapse">
-```{r, eval = F}
+```{r}
 load(url("https://raw.githubusercontent.com/ngladish/ReADI/main/2018-2022/ReADI_CBG_2022.RData"))
 load(url("https://raw.githubusercontent.com/ngladish/ReADI/main/2018-2022/ReADI_CT_2022.RData"))
 load(url("https://raw.githubusercontent.com/ngladish/ReADI/main/2018-2022/ReADI_C_2022.RData"))
@@ -445,7 +445,7 @@ For the mortality analyses, we use ReADI at the census tract level for 2011–20
 <div style="margin:16px 0">
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code470">Show Code</button>
   <div id="code470" class="collapse">
-```{r, eval = F}
+```{r}
 load(url("https://raw.githubusercontent.com/ngladish/ReADI/main/2011-2015/ReADI_CT_2015.RData"))
 ```
   </div>
@@ -514,7 +514,7 @@ This yields a transparent PCA-based deprivation index in the FDep tradition that
 <div style="margin:16px 0">
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code516">Show Code</button>
   <div id="code516" class="collapse">
-```{r, eval = F}
+```{r}
 load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/Other_Indices/SDVI_CBG_2022.RData"))
 load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/Other_Indices/SDVI_CT_2022.RData"))
 load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/Other_Indices/SDVI_C_2022.RData"))
@@ -534,7 +534,7 @@ Tracts with missing or suppressed USALEEP estimates are excluded from all mortal
 <div style="margin:16px 0">
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code570">Show Code</button>
   <div id="code570" class="collapse">
-```{r, eval = F}
+```{r}
 load(url("https://raw.githubusercontent.com/ngladish/ReADI/main/2011-2015/ReADI_CT_2015.RData"))
 load("NA_ADI_CT_2015.RData")
 ADI_Mortality_Data <- read.csv("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/USALEEP_Mortality/US_A.csv", colClasses = c(Tract.ID = "character"), stringsAsFactors = FALSE)
@@ -594,7 +594,7 @@ To benchmark against the original ADI, we also attach Singh (2003)’s published
 <div style="margin:16px 0">
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code612">Show Code</button>
   <div id="code612" class="collapse">
-```{r, eval = F}
+```{r}
 load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/ReADI_2022_Wt.RData"))
 
 ## 1. Defining the NA-ADI/Singh factor score coefficients
@@ -706,7 +706,7 @@ In all analyses:
 <div style="margin:16px 0">
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code733">Show Code</button>
   <div id="code733" class="collapse">
-```{r, eval = F}
+```{r}
 vars   <- c("MEDFI", "INCDIS", "BELPL", "PL150", "EDU9YR", "HSDPNHIGH", "EMPWC", "UNEMP", "MEDHV", "MEDRNT", "MEDMORT", "OWN", "SNGPNT", "NOVEH", "NOINT", "NOPLUM", "CROWD")
 
 # CBG --------------------------------------------------------------------
@@ -803,7 +803,7 @@ save(ADI_C_Data, file = "ADI_C_Data.RData")
 <div style="margin:16px 0">
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code841">Show Code</button>
   <div id="code841" class="collapse">
-```{r, eval = F}
+```{r}
 load("ADI_CBG_Data.RData")
 load("ADI_CT_Data.RData")
 load("ADI_C_Data.RData")
@@ -865,7 +865,7 @@ Concretely:
 <div style="margin:16px 0">
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code821">Show Code</button>
   <div id="code821" class="collapse">
-```{r, eval = F}
+```{r}
 load("ADI_CBG_Data.RData")
 load("ADI_CT_Data.RData")
 load("ADI_C_Data.RData")
@@ -964,7 +964,7 @@ These final urban–rural and region labels are stored in ADI_CBG_Data and ADI_C
 <div style="margin:16px 0">
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code988">Show Code</button>
   <div id="code988" class="collapse">
-```{r, eval = F}
+```{r}
 load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/ACS_CBG_2022_Geometry.RData"))
 load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/ACS_CT_2022_Geometry.RData"))
 load("ADI_CBG_Data.RData")
@@ -1100,7 +1100,7 @@ The printed outputs from this chunk reproduce the R-squared ranges and RMSE valu
 <div style="margin:16px 0">
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1114">Show Code</button>
   <div id="code1114" class="collapse">
-```{r, eval = F}
+```{r}
 load("ADI_CBG_Data.RData")
 load("ADI_CT_Data.RData")
 load("ADI_C_Data.RData")
@@ -1177,7 +1177,7 @@ This reproduces Figure 1A in the manuscript, showing how closely NA-ADI tracks R
 <div style="margin:16px 0">
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1031">Show Code</button>
   <div id="code1031" class="collapse">
-```{r, eval = F}
+```{r}
 ADI_Merge <- rbind(ADI_CBG, ADI_CT)
 ADI_Merge <- rbind(ADI_Merge, ADI_C)
 ggplot(ADI_Merge, aes(ReADI, NA_ADI, group = Geography)) +
@@ -1261,7 +1261,7 @@ This figure corresponds to Figure 1B in the manuscript and visually summarizes h
 <div style="margin:16px 0">
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1099">Show Code</button>
   <div id="code1099" class="collapse">
-```{r, eval = F}
+```{r}
 ADI_2022_Wt$Variables <- c("Median\nFamily Income", "Income Disparity", "Below Poverty\n100%", "Below Poverty\n150%", "Education\n<9yrs", "Education\n>Highschool", "White Collar\nEmployment", "Unemployment", "Median Home\nValue", "Median Rent", "Median Mortgage", "Home Ownership", "Single Parent", "No Vehicle", "No Internet", "No Plumbing", "Crowded Housing")
 
 sub <- melt(ADI_2022_Wt, id.vars =c("Vars", "NA_ADI", "Variables"))
@@ -1303,7 +1303,7 @@ The printed output from this chunk provides the R-squared and RMSE ranges (with 
 <div style="margin:16px 0">
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1325">Show Code</button>
   <div id="code1325" class="collapse">
-```{r, eval = F}
+```{r}
 load("ADI_Cor_L.RData")
 
 ### ReADI
@@ -1441,7 +1441,7 @@ Figure notes: RMSE is root mean squared error. Variables are ordered by the corr
 <div style="margin:16px 0">
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1495">Show Code</button>
   <div id="code1495" class="collapse">
-```{r, eval = F}
+```{r}
 load("ADI_Cor_L.RData")
 
 ## Figures
@@ -1503,7 +1503,7 @@ The printed outputs give the minimum and maximum correlations (with 95% CIs) for
 <div style="margin:16px 0">
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1571">Show Code</button>
   <div id="code1571" class="collapse">
-```{r, eval = F}
+```{r}
 load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/Other_Indices/SDVI_CBG_2022.RData"))
 load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/Other_Indices/SDVI_CT_2022.RData"))
 load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/Other_Indices/SDVI_C_2022.RData"))
@@ -1599,7 +1599,7 @@ The SDI, FDep, and NSS7 creation script is located in [NSS7_FDep_SDI_2022_Creati
 <div style="margin:16px 0">
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1674">Show Code</button>
   <div id="code1674" class="collapse">
-```{r, eval = F}
+```{r}
 op <- par(mfrow = c(1, 3))
 corrplot(cor(CBG[complete.cases(CBG),]), method = 'circle', order = "FPC", diag = FALSE, type = 'upper', p.mat = cor.mtest(CBG)$p, sig.level = 0.05/15, addCoef.col ='white', number.cex = 1.5, col = COL2('PuOr', 10), tl.col = 'black', tl.cex = 1.5)
 mtext("Block Group", side = 3, line = -5, cex = 2, font = 2)
@@ -1630,7 +1630,7 @@ The geometry object `ACS_C_2022_Geometry.RData` is loaded here in preparation fo
 <div style="margin:16px 0">
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1637">Show Code</button>
   <div id="code1637" class="collapse">
-```{r, eval = F}
+```{r}
 load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/ACS_C_2022_Geometry.RData"))
 load("ADI_CBG_Data.RData")
 load("ADI_C_Data.RData")
@@ -1682,7 +1682,7 @@ The county geometry objects used here (`ACS_CBG_2022_Geometry`, `ACS_CT_2022_Geo
 <div style="margin:16px 0">
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1689">Show Code</button>
   <div id="code1689" class="collapse">
-```{r, eval = F}
+```{r}
 ACS_C_2022_Geometry <- ACS_C_2022_Geometry %>% shift_geometry() %>% left_join(ADI_C_Data, by = "GEOID")
 ggplot() + 
   geom_sf(data = ACS_C_2022_Geometry, aes(fill = Diff_NA_ReADI)) + 
@@ -1716,7 +1716,7 @@ Scores range from 0 (dark blue) to 100 (light green), with 100 indicating the mo
 <div style="margin:16px 0">
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1722">Show Code</button>
   <div id="code1722" class="collapse">
-```{r, eval = F}
+```{r}
 load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/ACS_C_2022_Geometry.RData"))
 load("ADI_C_Data.RData")
 ACS_C_2022_Geometry <- ACS_C_2022_Geometry %>% shift_geometry() %>% left_join(ADI_C_Data, by = "GEOID")
@@ -1775,7 +1775,7 @@ The printed outputs from this chunk provide the rural and urban means and standa
 <div style="margin:16px 0">
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1782">Show Code</button>
   <div id="code1782" class="collapse">
-```{r, eval = F}
+```{r}
 load("ADI_CBG_Data.RData")
 load("ADI_CT_Data.RData")
 load("CT_region_summary.RData")
@@ -1937,7 +1937,7 @@ Together, these plots (eFigure 2A for block groups, 2B for tracts) visualize the
 <div style="margin:16px 0">
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1942">Show Code</button>
   <div id="code1942" class="collapse">
-```{r, eval = F}
+```{r}
 load("CBG_region_summary.RData")
 load("CT_region_summary.RData")
 
@@ -1998,7 +1998,7 @@ Pearson’s correlations are presented. All associations were statistically sign
 <div style="margin:16px 0">
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code2003">Show Code</button>
   <div id="code2003" class="collapse">
-```{r, eval = F}
+```{r}
 load("ADI_Diff_Cor.RData")
 
 ggplot(ADI_Diff_Cor, aes(x = Ord, y = Cor, fill = Variables)) +
@@ -2081,7 +2081,7 @@ Using `ADI_Mortality_Data` and tract-level population counts from `Pop_Total_201
 <div style="margin:16px 0">
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code2086">Show Code</button>
   <div id="code2086" class="collapse">
-```{r, eval = F}
+```{r}
 load("Pop_Total_2015.RData")
 load("ADI_Mortality_Data.RData")
 Pop_Total_2015 <- Pop_Total_2015[, c("GEOID", "Pop_Total_2015")]
@@ -2248,7 +2248,7 @@ To assess whether ReADI explains significantly more variance in life expectancy 
 <div style="margin:16px 0">
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code2409">Show Code</button>
   <div id="code2409" class="collapse">
-```{r, eval = F}
+```{r}
 ggplot(results, aes(x = bin, y = R2, color = ADI)) +
   geom_point(size = 4, position = position_dodge(width = 0.55)) +
   geom_errorbar(aes(ymin = LCL, ymax = UCL), width = 0.18, position = position_dodge(width = 0.55), linewidth = 0.7) +
