@@ -1234,12 +1234,12 @@ This reproduces Figure 1A in the manuscript, showing how closely NA-ADI tracks R
 <div style="margin:16px 0">
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1031">Show Code</button>
   <div id="code1031" class="collapse">
-```{r}
+```{r, eval=F}
 ADI_Merge <- rbind(ADI_CBG, ADI_CT)
 ADI_Merge <- rbind(ADI_Merge, ADI_C)
 ggplot(ADI_Merge, aes(ReADI, NA_ADI, group = Geography)) +
   geom_point(alpha = 0.6, color = "#0D5F79", size = 0.2) +
-  geom_smooth(method='lm', color = "darkgrey") +
+  geom_smooth(method='lm', color = "darkgrey", formula = "y ~ x") +
   ylab("Neighborhood Atlas ADI") +
   xlab("Reproducible ADI") +
   facet_wrap(~Geography) +
@@ -1250,18 +1250,18 @@ ggplot(ADI_Merge, aes(ReADI, NA_ADI, group = Geography)) +
 
 <br>
 
-> Figure 1. Comparison of Neighborhood Atlas Area Deprivation Index (NA-ADI) and Reproducible ADI (ReADI) Scores and Factor Weights at Multiple Geographic Scales. A. Associations between the NA-ADI and ReADI scores.
+> Figure 1A. Comparison of Neighborhood Atlas Area Deprivation Index (NA-ADI) and Reproducible ADI (ReADI) Scores and Factor Weights at Multiple Geographic Scales. A. Associations between the NA-ADI and ReADI scores.
 
-```{r, echo = F}
+```{r, echo = F, fig.width=10, fig.height=4}
 ADI_Merge <- rbind(ADI_CBG, ADI_CT)
 ADI_Merge <- rbind(ADI_Merge, ADI_C)
 ggplot(ADI_Merge, aes(ReADI, NA_ADI, group = Geography)) +
   geom_point(alpha = 0.6, color = "#0D5F79", size = 0.2) +
-  geom_smooth(method='lm', color = "darkgrey") +
+  geom_smooth(method='lm', color = "darkgrey", formula = "y ~ x") +
   ylab("Neighborhood Atlas ADI") +
   xlab("Reproducible ADI") +
   facet_wrap(~Geography) +
-  theme_bw(base_size = 18)
+  theme_bw(base_size = 12)
 ```
 
 <br><br>
@@ -1351,7 +1351,7 @@ This figure corresponds to Figure 1B in the manuscript and visually summarizes h
 <div style="margin:16px 0">
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1099">Show Code</button>
   <div id="code1099" class="collapse">
-```{r}
+```{r, eval=F}
 ADI_2022_Wt$Variables <- c("Median\nFamily Income", "Income Disparity", "Below Poverty\n100%", "Below Poverty\n150%", "Education\n<9yrs", "Education\n>Highschool", "White Collar\nEmployment", "Unemployment", "Median Home\nValue", "Median Rent", "Median Mortgage", "Home Ownership", "Single Parent", "No Vehicle", "No Internet", "No Plumbing", "Crowded Housing")
 
 sub <- melt(ADI_2022_Wt, id.vars =c("Vars", "NA_ADI", "Variables"))
@@ -1359,7 +1359,7 @@ sub$Geography <- ifelse(sub$variable == "CBG", "Block Group", sub$variable)
 sub$Geography <- ifelse(sub$variable == "CT", "Census Tract", sub$Geography) 
 sub$Geography <- ifelse(sub$variable == "C", "County", sub$Geography) 
 ggplot(sub, aes(value, NA_ADI, color = Variables, group = Geography)) +
-  geom_smooth(method='lm', color = "darkgrey") +
+  geom_smooth(method='lm', color = "darkgrey", formula = "y ~ x") +
   geom_point(alpha = 0.9, size = 5) +
   scale_color_viridis(discrete = T, option = "H") +
   xlab("ReADI Weights") +
@@ -1372,9 +1372,9 @@ ggplot(sub, aes(value, NA_ADI, color = Variables, group = Geography)) +
 
 <br>
 
-> Figure 1. Comparison of Neighborhood Atlas Area Deprivation Index (NA-ADI) and Reproducible ADI (ReADI) Scores and Factor Weights at Multiple Geographic Scales. B. Factor weights of economic indicators.
+> Figure 1B. Comparison of Neighborhood Atlas Area Deprivation Index (NA-ADI) and Reproducible ADI (ReADI) Scores and Factor Weights at Multiple Geographic Scales. B. Factor weights of economic indicators.
 
-```{r, echo = F}
+```{r, echo = F, fig.width=10, fig.height=6}
 ADI_2022_Wt$Variables <- c("Median\nFamily Income", "Income Disparity", "Below Poverty\n100%", "Below Poverty\n150%", "Education\n<9yrs", "Education\n>Highschool", "White Collar\nEmployment", "Unemployment", "Median Home\nValue", "Median Rent", "Median Mortgage", "Home Ownership", "Single Parent", "No Vehicle", "No Internet", "No Plumbing", "Crowded Housing")
 
 sub <- melt(ADI_2022_Wt, id.vars =c("Vars", "NA_ADI", "Variables"))
@@ -1382,13 +1382,13 @@ sub$Geography <- ifelse(sub$variable == "CBG", "Block Group", sub$variable)
 sub$Geography <- ifelse(sub$variable == "CT", "Census Tract", sub$Geography) 
 sub$Geography <- ifelse(sub$variable == "C", "County", sub$Geography) 
 ggplot(sub, aes(value, NA_ADI, color = Variables, group = Geography)) +
-  geom_smooth(method='lm', color = "darkgrey") +
+  geom_smooth(method='lm', color = "darkgrey", formula = "y ~ x") +
   geom_point(alpha = 0.9, size = 5) +
   scale_color_viridis(discrete = T, option = "H") +
   xlab("ReADI Weights") +
   ylab("NA-ADI Weights") +
   facet_wrap(~Geography) +
-  theme_bw(base_size = 18)
+  theme_bw(base_size = 12)
 ```
 
 <br><br>
@@ -1526,7 +1526,7 @@ L <- paste("Figure 2B (NA-ADI C): R^2 = ", round(r2_c,3), " (RMSE, ", round(rmse
   </div>
 </div>
 
-```{r, echo = T}
+```{r, echo = F}
 A
 B
 C
@@ -1561,10 +1561,8 @@ Code and figure notes: RMSE is root mean squared error. Variables are ordered by
 <div style="margin:16px 0">
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1495">Show Code</button>
   <div id="code1495" class="collapse">
-```{r}
+```{r, eval = F}
 #load("ADI_Cor_L.RData")
-
-## Figures
 # A
 sub <- ADI_Cor_L[, c("Variables", "Geography", "ReADI_Cor", "ReADI_Loadings")]
 sub$Variables <- as.factor(sub$Variables)
@@ -1606,7 +1604,7 @@ ggplot(sub, aes(x = Variables, y = value, fill = variable)) +
 
 > A. ReADI scores.
 
-```{r, echo = F}
+```{r, echo = F, fig.width=10, fig.height=4}
 sub <- ADI_Cor_L[, c("Variables", "Geography", "ReADI_Cor", "ReADI_Loadings")]
 sub$Variables <- as.factor(sub$Variables)
 sub$Variables <- factor(sub$Variables, levels = sub$Variables[order(sub[sub$Geography == "Block Group", "ReADI_Cor"])])
@@ -1619,15 +1617,15 @@ ggplot(sub, aes(x = Variables, y = value, fill = variable)) +
   xlab("ADI Components") +
   ylab("Loadings") +
   facet_wrap(~ Geography) +
-  scale_fill_manual(name = "Measure", labels = c("ReADI Correlations", "ReADI Loadings"), values = c("#d8b365", "#5ab4ac")) +
-  theme_bw(base_size = 18)
+  scale_fill_manual(name = "Measure", labels = c("ReADI\nCorrelations", "ReADI\nLoadings"), values = c("#d8b365", "#5ab4ac")) +
+  theme_bw(base_size = 12)
 ```
 
 <br>
 
 > B. NA-ADI scores.
 
-```{r, echo = F}
+```{r, echo = F, fig.width=10, fig.height=4}
 sub <- ADI_Cor_L[, c("Variables", "Geography", "NA_Cor", "NA_ADI_Loadings")]
 sub$Variables <- as.factor(sub$Variables)
 sub$Variables <- factor(sub$Variables, levels = sub$Variables[order(sub[sub$Geography == "Block Group", "NA_Cor"])])
@@ -1640,8 +1638,8 @@ ggplot(sub, aes(x = Variables, y = value, fill = variable)) +
   xlab("ADI Components") +
   ylab("Loadings") +
   facet_wrap(~Geography) +
-  scale_fill_manual(name = "Measure", labels = c("NA-ADI Correlations", "Singh Loadings"), values = c("#d8b365", "#5ab4ac")) +
-  theme_bw(base_size = 18)
+  scale_fill_manual(name = "Measure", labels = c("NA-ADI\nCorrelations", "Singh\nLoadings"), values = c("#d8b365", "#5ab4ac")) +
+  theme_bw(base_size = 12)
 ```
 
 <br><br>
@@ -1770,16 +1768,16 @@ The SDI, FDep, and NSS7 creation script is located in [NSS7_FDep_SDI_2022_Creati
 <div style="margin:16px 0">
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1674">Show Code</button>
   <div id="code1674" class="collapse">
-```{r}
+```{r, eval = F}
 op <- par(mfrow = c(1, 3))
 corrplot(cor(CBG[complete.cases(CBG),]), method = 'circle', order = "FPC", diag = FALSE, type = 'upper', p.mat = cor.mtest(CBG)$p, sig.level = 0.05/15, addCoef.col ='white', number.cex = 1.5, col = COL2('PuOr', 10), tl.col = 'black', tl.cex = 1.5)
-mtext("Block Group", side = 3, line = -5, cex = 2, font = 2)
+mtext("Block Group", side = 3, line = -5, cex = 1, font = 2)
 
 corrplot(cor(CT[complete.cases(CT),]), method = 'circle', order = "FPC", diag = FALSE, type = 'upper', p.mat = cor.mtest(CT)$p, sig.level = 0.05/15, addCoef.col ='white', number.cex = 1.5, col = COL2('PuOr', 10), tl.col = 'black', tl.cex = 1.5)
-mtext("Census Tract", side = 3, line = -5, cex = 2, font = 2)
+mtext("Census Tract", side = 3, line = -5, cex = 1, font = 2)
 
 corrplot(cor(C[complete.cases(C),]), method = 'circle', order = "FPC", diag = FALSE, type = 'upper', p.mat = cor.mtest(C)$p, sig.level = 0.05/15, addCoef.col ='white', number.cex = 1.5, col = COL2('PuOr', 10), tl.col = 'black', tl.cex = 1.5)
-mtext("County", side = 3, line = -5, cex = 2, font = 2)
+mtext("County", side = 3, line = -5, cex = 1, font = 2)
 par(op)
 ```
   </div>
@@ -1789,17 +1787,12 @@ par(op)
 
 > Figure 3. Pearson Correlations Between the Reproducible Area Deprivation Index (ReADI) and Neighborhood Atlas ADI (NA-ADI) and the 3 Established Deprivation Indices Across Geographic Levels A. Block Group. B. Census Tract. C. County.
 
-```{r, echo = F}
-op <- par(mfrow = c(1, 3))
-corrplot(cor(CBG[complete.cases(CBG),]), method = 'circle', order = "FPC", diag = FALSE, type = 'upper', p.mat = cor.mtest(CBG)$p, sig.level = 0.05/15, addCoef.col ='white', number.cex = 1.5, col = COL2('PuOr', 10), tl.col = 'black', tl.cex = 1.5)
-mtext("Block Group", side = 3, line = -5, cex = 2, font = 2)
+```{r, echo = F, fig.width=6, fig.height=6}
+corrplot(cor(CBG[complete.cases(CBG),]), method = 'circle', order = "FPC", diag = FALSE, type = 'upper', p.mat = cor.mtest(CBG)$p, sig.level = 0.05/15, addCoef.col ='white', number.cex = 0.8, col = COL2('PuOr', 10), tl.col = 'black', tl.cex = 0.8, title = "Block Group", mar = c(1, 1, 5, 1))
 
-corrplot(cor(CT[complete.cases(CT),]), method = 'circle', order = "FPC", diag = FALSE, type = 'upper', p.mat = cor.mtest(CT)$p, sig.level = 0.05/15, addCoef.col ='white', number.cex = 1.5, col = COL2('PuOr', 10), tl.col = 'black', tl.cex = 1.5)
-mtext("Census Tract", side = 3, line = -5, cex = 2, font = 2)
+corrplot(cor(CT[complete.cases(CT),]), method = 'circle', order = "FPC", diag = FALSE, type = 'upper', p.mat = cor.mtest(CT)$p, sig.level = 0.05/15, addCoef.col ='white', number.cex = 0.8, col = COL2('PuOr', 10), tl.col = 'black', tl.cex = 0.8, title = "Census Tract", mar = c(1, 1, 5, 1))
 
-corrplot(cor(C[complete.cases(C),]), method = 'circle', order = "FPC", diag = FALSE, type = 'upper', p.mat = cor.mtest(C)$p, sig.level = 0.05/15, addCoef.col ='white', number.cex = 1.5, col = COL2('PuOr', 10), tl.col = 'black', tl.cex = 1.5)
-mtext("County", side = 3, line = -5, cex = 2, font = 2)
-par(op)
+corrplot(cor(C[complete.cases(C),]), method = 'circle', order = "FPC", diag = FALSE, type = 'upper', p.mat = cor.mtest(C)$p, sig.level = 0.05/15, addCoef.col ='white', number.cex = 0.8, col = COL2('PuOr', 10), tl.col = 'black', tl.cex = 0.8, title = "County", mar = c(1, 1, 5, 1))
 ```
 
 Figure notes: Results are ordered based on the first principal component.  
@@ -1879,13 +1872,12 @@ The county geometry objects used here (ACS_CBG_2022_Geometry, ACS_CT_2022_Geomet
 <div style="margin:16px 0">
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1689">Show Code</button>
   <div id="code1689" class="collapse">
-```{r}
+```{r, eval=F}
 ACS_C_2022_Geometry <- ACS_C_2022_Geometry %>% shift_geometry() %>% left_join(ADI_C_Data, by = "GEOID")
 ggplot() + 
   geom_sf(data = ACS_C_2022_Geometry, aes(fill = Diff_NA_ReADI)) + 
   scale_fill_gradientn(colours = rev(ocean.curl(200)), limits = c(-100,100), name = "ADI Difference", guide = "colourbar") +
-  theme_void() +
-  theme(plot.title = element_text(size = 30, face = "bold", hjust = 0.5))
+  theme_void()
 ```
   </div>
 </div>
@@ -1894,12 +1886,12 @@ ggplot() +
 
 > Figure 4. County-Level Map of Score Differences Between the Neighborhood Atlas Area Deprivation Index (ADI) and Reproducible ADI
 
-```{r, echo=F}
+```{r, echo=F, fig.width=10, fig.height=8}
+ACS_C_2022_Geometry <- ACS_C_2022_Geometry %>% shift_geometry() %>% left_join(ADI_C_Data, by = "GEOID")
 ggplot() + 
   geom_sf(data = ACS_C_2022_Geometry, aes(fill = Diff_NA_ReADI)) + 
   scale_fill_gradientn(colours = rev(ocean.curl(200)), limits = c(-100,100), name = "ADI Difference", guide = "colourbar") +
-  theme_void() +
-  theme(plot.title = element_text(size = 30, face = "bold", hjust = 0.5))
+  theme_void()
 ```
 
 <br><br>
@@ -1911,16 +1903,16 @@ ggplot() +
 
 For this figure we map county-level NA-ADI and ReADI scores side by side on a common 0–100 deprivation scale. We:
 
-- load the county geometry object `ACS_C_2022_Geometry` and apply `shift_geometry()` to reposition Alaska and Hawaii for display;  
-- join `ACS_C_2022_Geometry` to `ADI_C_Data` by `GEOID` so each county polygon has its NA-ADI score (`NA_ADI`) and ReADI score (`ReADI_C_NR`); and  
-- create two `geom_sf()` maps, one filled by `NA_ADI` and one by `ReADI_C_NR`, using `scale_fill_viridis_c(limits = c(0, 100), name = "ADI Score")` so both panels share an identical color scale.
+- load the county geometry object ACS_C_2022_Geometry and apply shift_geometry() to reposition Alaska and Hawaii for display;  
+- join ACS_C_2022_Geometry to ADI_C_Data by GEOID so each county polygon has its NA-ADI score (NA_ADI) and ReADI score (ReADI_C_NR); and  
+- create two geom_sf() maps, one filled by NA_ADI and one by ReADI_C_NR, using scale_fill_viridis_c(limits = c(0, 100), name = "ADI Score") so both panels share an identical color scale.
 
 Scores range from 0 (dark blue) to 100 (light green), with 100 indicating the most deprived counties. The resulting two-panel map reproduces eFigure 1 in the manuscript and allows a direct visual comparison of the national deprivation patterns produced by NA-ADI versus ReADI.
 
 <div style="margin:16px 0">
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1722">Show Code</button>
   <div id="code1722" class="collapse">
-```{r}
+```{r, eval=F}
 load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/ACS_C_2022_Geometry.RData"))
 #load("ADI_C_Data.RData")
 ACS_C_2022_Geometry <- ACS_C_2022_Geometry %>% shift_geometry() %>% left_join(ADI_C_Data, by = "GEOID")
@@ -1930,14 +1922,14 @@ ggplot() +
   scale_fill_viridis_c(limits = c(0,100), name = "ADI Score") +
   ggtitle("Neighborhood Atlas ADI") +
   theme_void() +
-  theme(plot.title = element_text(size = 30, face = "bold", hjust = 0.5))
+  theme(plot.title = element_text(size = 15, face = "bold", hjust = 0.5))
 
 ggplot() + 
   geom_sf(data = ACS_C_2022_Geometry, aes(fill = ReADI_C_NR)) + 
   scale_fill_viridis_c(limits = c(0,100), name = "ADI Score") +
   ggtitle("Reproducible ADI") +
   theme_void() +
-  theme(plot.title = element_text(size = 30, face = "bold", hjust = 0.5))
+  theme(plot.title = element_text(size = 15, face = "bold", hjust = 0.5))
 ```
   </div>
 </div>
@@ -1946,22 +1938,22 @@ ggplot() +
 
 > eFigure 1. U.S. county-level deprivation scores for the Neighborhood Atlas ADI and Reproducible ADI.
 
-```{r, echo=F}
+```{r, echo=F, fig.width=10, fig.height=8}
 ggplot() + 
   geom_sf(data = ACS_C_2022_Geometry, aes(fill = NA_ADI)) + 
   scale_fill_viridis_c(limits = c(0,100), name = "ADI Score") +
   ggtitle("Neighborhood Atlas ADI") +
   theme_void() +
-  theme(plot.title = element_text(size = 30, face = "bold", hjust = 0.5))
+  theme(plot.title = element_text(size = 15, face = "bold", hjust = 0.5))
 ```
 
-```{r, echo=F}
+```{r, echo=F, fig.width=10, fig.height=8}
 ggplot() + 
   geom_sf(data = ACS_C_2022_Geometry, aes(fill = ReADI_C_NR)) + 
   scale_fill_viridis_c(limits = c(0,100), name = "ADI Score") +
   ggtitle("Reproducible ADI") +
   theme_void() +
-  theme(plot.title = element_text(size = 30, face = "bold", hjust = 0.5))
+  theme(plot.title = element_text(size = 15, face = "bold", hjust = 0.5))
 ```
 
 <br><br>
@@ -1978,19 +1970,19 @@ We proceed in several steps:
 1. **Tract-level (CT) rural vs urban summaries and Welch t-test**  
    - For tracts, we first tabulate, separately for rural and urban areas, the number and percentage of units where the NA-ADI score exceeds the ReADI score (Diff_NA_ReADI > 0), along with the mean and standard deviation of Diff_NA_ReADI within each group.  
    - We then run a Welch two-sample t-test (t.test(Diff_NA_ReADI ~ urban_label, data = ADI_CT_Data)) to compare the mean NA-ADI minus ReADI difference between rural and urban tracts. From this model we extract the t statistic, 95% confidence interval for the mean difference, and p-value, and format them as “Welch t, 95% CI, P < …” for reporting in the Results.
-
+<br>
 2. **Block-group (CBG) rural vs urban summaries and Welch t-test**  
    - For block groups, we repeat the same analysis: obtain the mean and standard deviation of Diff_NA_ReADI in rural and urban areas, and fit a Welch t-test comparing the mean difference between the two groups.  
    - We extract rural and urban means and SDs, the t statistic, 95% confidence interval, and p-value, and summarize them in a single formatted string for inclusion in the text.
-
+<br>
 3. **Standardized effect sizes (Cohen’s d)**  
    - After restricting to non-missing Diff_NA_ReADI, we compute Cohen’s d for the rural–urban difference at both geographies using effectsize::cohens_d(Diff_NA_ReADI ~ urban_label, ci = 0.95).  
    - These effect sizes provide a standardized measure of the magnitude of the rural–urban gap in NA-ADI vs ReADI differences.
-
+<br>
 4. **Quantile regression for rural–urban differences across the distribution**  
    - To assess whether rural–urban differences are present across the distribution of Diff_NA_ReADI (not only at the mean), we fit quantile regression models rq(Diff_NA_ReADI ~ urban_label, tau = c(0.25, 0.5, 0.75)) separately for tracts and block groups.  
    - For each model we extract the coefficient for urban_labelUrban at the 25th, 50th, and 75th percentiles (tau = 0.25, 0.50, 0.75) and report them as “t(25%), t(50%), t(75%)”, which quantify the rural–urban gap at lower, median, and upper parts of the discrepancy distribution.
-
+<br>
 5. **State-level rural–urban gaps (CT and CBG)**  
    - Using CT_region_summary and CBG_region_summary, which contain, by state and urban status, the mean Diff_NA_ReADI, its standard deviation, and the number of units, we compute state-specific rural–urban gaps at the tract and block-group levels.  
    - For each state with both urban and rural observations, we calculate the mean difference gap (urban mean minus rural mean), its standard error based on the group-specific SDs and sample sizes, and a 95% confidence interval (gap ± 1.96 × SE).  
@@ -2171,17 +2163,13 @@ Together, these plots (eFigure 2A for block groups, 2B for tracts) visualize the
 <div style="margin:16px 0">
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1942">Show Code</button>
   <div id="code1942" class="collapse">
-```{r}
+```{r, eval = F}
 #load("CBG_region_summary.RData")
 #load("CT_region_summary.RData")
 
 ggplot(CBG_region_summary, aes(x = reorder(state_name, mean_diff), y = mean_diff, fill = urban_label)) +
   geom_col(position = position_dodge(width = 0.9), width = 0.9) +
-  geom_errorbar(
-    aes(ymin = mean_diff - se_diff, ymax = mean_diff + se_diff),
-    position = position_dodge(width = 0.9),
-    width = 0.3
-  ) +
+  geom_errorbar(aes(ymin = mean_diff - se_diff, ymax = mean_diff + se_diff), position = position_dodge(width = 0.9), width = 0.3) +
   coord_flip() +
   facet_wrap(~ region, scales = "free_y") +
   scale_fill_manual(values = c("Urban" = "steelblue", "Rural" = "darkorange"), name = "Area Type") +
@@ -2190,11 +2178,7 @@ ggplot(CBG_region_summary, aes(x = reorder(state_name, mean_diff), y = mean_diff
 
 ggplot(CT_region_summary, aes(x = reorder(state_name, mean_diff), y = mean_diff, fill = urban_label)) +
   geom_col(position = position_dodge(width = 0.9), width = 0.9) +
-  geom_errorbar(
-    aes(ymin = mean_diff - se_diff, ymax = mean_diff + se_diff),
-    position = position_dodge(width = 0.9),
-    width = 0.3
-  ) +
+  geom_errorbar(aes(ymin = mean_diff - se_diff, ymax = mean_diff + se_diff), position = position_dodge(width = 0.9), width = 0.3) +
   coord_flip() +
   facet_wrap(~ region, scales = "free_y") +
   scale_fill_manual(values = c("Urban" = "steelblue", "Rural" = "darkorange"), name = "Area Type") +
@@ -2208,17 +2192,14 @@ ggplot(CT_region_summary, aes(x = reorder(state_name, mean_diff), y = mean_diff,
 
 >eFigure 2. Mean difference between the Neighborhood Atlas (NA-ADI) and Reproducible Area Deprivation Index (ReADI) by state, regions, and area type. A. CBG.
 
-```{r, echo = F}
+```{r, echo = F, fig.width=10, fig.height=8}
 ggplot(CBG_region_summary, aes(x = reorder(state_name, mean_diff), y = mean_diff, fill = urban_label)) +
   geom_col(position = position_dodge(width = 0.9), width = 0.9) +
-  geom_errorbar(
-    aes(ymin = mean_diff - se_diff, ymax = mean_diff + se_diff),
-    position = position_dodge(width = 0.9),
-    width = 0.3) +
+  geom_errorbar(aes(ymin = mean_diff - se_diff, ymax = mean_diff + se_diff), position = position_dodge(width = 0.9), width = 0.3) +
   coord_flip() +
   facet_wrap(~ region, scales = "free_y") +
   scale_fill_manual(values = c("Urban" = "steelblue", "Rural" = "darkorange"), name = "Area Type") +
-  theme_minimal(base_size = 18) +
+  theme_minimal(base_size = 14) +
   labs(x = "State", y = "Mean Difference (±SE)")
 ```
 
@@ -2226,17 +2207,14 @@ ggplot(CBG_region_summary, aes(x = reorder(state_name, mean_diff), y = mean_diff
 
 >eFigure 2. Mean difference between the Neighborhood Atlas (NA-ADI) and Reproducible Area Deprivation Index (ReADI) by state, regions, and area type. B. CT.
 
-```{r, echo = F}
+```{r, echo = F, fig.width=10, fig.height=8}
 ggplot(CT_region_summary, aes(x = reorder(state_name, mean_diff), y = mean_diff, fill = urban_label)) +
   geom_col(position = position_dodge(width = 0.9), width = 0.9) +
-  geom_errorbar(
-    aes(ymin = mean_diff - se_diff, ymax = mean_diff + se_diff),
-    position = position_dodge(width = 0.9),
-    width = 0.3) +
+  geom_errorbar(aes(ymin = mean_diff - se_diff, ymax = mean_diff + se_diff), position = position_dodge(width = 0.9), width = 0.3) +
   coord_flip() +
   facet_wrap(~ region, scales = "free_y") +
   scale_fill_manual(values = c("Urban" = "steelblue", "Rural" = "darkorange"), name = "Area Type") +
-  theme_minimal(base_size = 18) +
+  theme_minimal(base_size = 14) +
   labs(x = "State", y = "Mean Difference (±SE)") 
 ```
 
@@ -2268,7 +2246,7 @@ Pearson’s correlations are presented. All associations were statistically sign
 <div style="margin:16px 0">
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code2003">Show Code</button>
   <div id="code2003" class="collapse">
-```{r}
+```{r, eval = F}
 #load("ADI_Diff_Cor.RData")
 
 ggplot(ADI_Diff_Cor, aes(x = Ord, y = Cor, fill = Variables)) +
@@ -2286,13 +2264,13 @@ ggplot(ADI_Diff_Cor, aes(x = Ord, y = Cor, fill = Variables)) +
 
 > eFigure 3. Correlations between socioeconomic indicators and the difference between the Neighborhood Atlas (NA-ADI) and the Reproducible Area Deprivation Index (ReADI) across geographies.
 
-```{r, echo = F}
+```{r, echo = F, fig.width=10, fig.height=4}
 ggplot(ADI_Diff_Cor, aes(x = Ord, y = Cor, fill = Variables)) +
   geom_bar(stat = "identity") +
   facet_wrap(~Geo, scales = "free_x", drop = T, nrow = 2) +
-  theme_light(base_size = 18) +
+  theme_light(base_size = 12) +
   ylab("Correlation to NA-ADI Error") +
-  theme(axis.text.x = element_blank(), axis.title.x = element_blank(), axis.ticks.x = element_blank(), strip.background =element_rect(fill="#474F58"), axis.title.y=element_text(size=22), legend.title = element_text(size = 18),legend.text = element_text(size = 12)) +
+  theme(axis.text.x = element_blank(), axis.title.x = element_blank(), axis.ticks.x = element_blank(), strip.background =element_rect(fill="#474F58"), axis.title.y=element_text(size=18), legend.title = element_text(size = 14),legend.text = element_text(size = 10)) +
   guides(fill = guide_legend(override.aes = list(size = 7))) 
 ```
 
@@ -2474,14 +2452,14 @@ For each bin we fit two sets of linear regression models:
 - **Panel A (unadjusted):** life expectancy regressed on NA-ADI alone and on ReADI alone.  
 - **Panel B (population-adjusted):** life expectancy regressed on NA-ADI plus log population, and on ReADI plus log population.
 
-From each model we take the R-squared and its 95% confidence interval (from `MBESS::ci.R2()`), and store these in `results` (unadjusted) and `results_pop` (adjusted). The plotted points in each panel are the R-squared values for NA-ADI and ReADI within each disagreement bin, and the vertical lines are their 95% confidence intervals. The x-axis shows the NA-ADI vs ReADI disagreement category; the y-axis shows the proportion of variance in life expectancy explained.
+From each model we take the R-squared and its 95% confidence interval (from MBESS::ci.R2()), and store these in results (unadjusted) and results_pop (adjusted). The plotted points in each panel are the R-squared values for NA-ADI and ReADI within each disagreement bin, and the vertical lines are their 95% confidence intervals. The x-axis shows the NA-ADI vs ReADI disagreement category; the y-axis shows the proportion of variance in life expectancy explained.
 
 To assess whether ReADI explains significantly more variance in life expectancy than NA-ADI within a given bin, we use the analytic test on the difference in R-squared described in the mortality section (converted to a z-statistic with a two-sided p-value), and apply a Bonferroni-corrected significance threshold of p < 0.0125 for the four bins. Bins where this difference is statistically significant are marked with an asterisk in the corresponding panel (for example, in the 20–39 and 40–100 bins in the unadjusted models, and the 40–100 bin in the population-adjusted models).
 
 <div style="margin:16px 0">
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code2409">Show Code</button>
   <div id="code2409" class="collapse">
-```{r}
+```{r, eval = F}
 ggplot(results, aes(x = bin, y = R2, color = ADI)) +
   geom_point(size = 4, position = position_dodge(width = 0.55)) +
   geom_errorbar(aes(ymin = LCL, ymax = UCL), width = 0.18, position = position_dodge(width = 0.55), linewidth = 0.7) +
@@ -2489,31 +2467,16 @@ ggplot(results, aes(x = bin, y = R2, color = ADI)) +
   annotate("text", x = 4, y = 0.2, label = "*", size = 10) +  # for ≥40-100
   theme_light(base_size = 18) +
   theme(legend.position = "none") +
-  labs(title = "Mortality ~ ADI",
-    x = "Absolute ADI Difference",
-    y = expression(R^2),
-    color = "ADI") +
-  scale_color_manual(
-    values = c("Reproducible" = "#5ab4ac", "Neighborhood Atlas" = "#d8b365"),
-    breaks = c("Reproducible","Neighborhood Atlas"),
-    labels = c("Reproducible","Neighborhood\nAtlas"))+
+  labs(title = "Mortality ~ ADI", x = "Absolute ADI Difference", y = expression(R^2), color = "ADI") +
+  scale_color_manual(values = c("Reproducible" = "#5ab4ac", "Neighborhood Atlas" = "#d8b365"), breaks = c("Reproducible","Neighborhood Atlas"), labels = c("Reproducible","Neighborhood\nAtlas"))+
   coord_cartesian(ylim = c(0, 0.65))
 
 ggplot(results_pop, aes(x = bin, y = R2, color = ADI)) +
   geom_point(size = 4, position = position_dodge(width = 0.55)) +
   geom_errorbar(aes(ymin = LCL, ymax = UCL), width = 0.18, position = position_dodge(width = 0.55), linewidth = 0.7) +
   annotate("text", x = 4, y = 0.25, label = "*", size = 10) +  # for ≥40-100
-  labs(
-    title = "Mortality ~ ADI + Population Size",
-    x = "Absolute ADI Difference",
-    y = expression(R^2),
-    color = "ADI"
-  ) +
-  scale_color_manual(
-    values = c("Reproducible" = "#5ab4ac", "Neighborhood Atlas" = "#d8b365"),
-    breaks = c("Reproducible","Neighborhood Atlas"),
-    labels = c("Reproducible","Neighborhood\nAtlas")
-  ) +
+  labs(title = "Mortality ~ ADI + Population Size", x = "Absolute ADI Difference", y = expression(R^2), color = "ADI") +
+  scale_color_manual(values = c("Reproducible" = "#5ab4ac", "Neighborhood Atlas" = "#d8b365"), breaks = c("Reproducible","Neighborhood Atlas"), labels = c("Reproducible","Neighborhood\nAtlas")) +
   theme_light(base_size = 18) +
   coord_cartesian(ylim = c(0, 0.65))  
 ```
@@ -2524,22 +2487,15 @@ ggplot(results_pop, aes(x = bin, y = R2, color = ADI)) +
 
 > Figure 5. Comparison of How Each Area Deprivation Index (ADI) Is Associated With Mortality by Level of Score Disagreement. A. Mortality ~ ADI
 
-```{r, echo = F}
+```{r, echo = F, fig.width=8, fig.height=4}
 ggplot(results, aes(x = bin, y = R2, color = ADI)) +
   geom_point(size = 4, position = position_dodge(width = 0.55)) +
   geom_errorbar(aes(ymin = LCL, ymax = UCL), width = 0.18, position = position_dodge(width = 0.55), linewidth = 0.7) +
   annotate("text", x = 3, y = 0.25, label = "*", size = 10) +  # for ≥20-40
   annotate("text", x = 4, y = 0.2, label = "*", size = 10) +  # for ≥40-100
-  theme_light(base_size = 18) +
-  theme(legend.position = "none") +
-  labs(title = "Mortality ~ ADI",
-    x = "Absolute ADI Difference",
-    y = expression(R^2),
-    color = "ADI") +
-  scale_color_manual(
-    values = c("Reproducible" = "#5ab4ac", "Neighborhood Atlas" = "#d8b365"),
-    breaks = c("Reproducible","Neighborhood Atlas"),
-    labels = c("Reproducible","Neighborhood\nAtlas"))+
+  theme_light(base_size = 16) +
+  labs(title = "Mortality ~ ADI", x = "Absolute ADI Difference", y = expression(R^2), color = "ADI") +
+  scale_color_manual(values = c("Reproducible" = "#5ab4ac", "Neighborhood Atlas" = "#d8b365"), breaks = c("Reproducible","Neighborhood Atlas"), labels = c("Reproducible","Neighborhood\nAtlas"))+
   coord_cartesian(ylim = c(0, 0.65))
 ```
 
@@ -2547,24 +2503,15 @@ ggplot(results, aes(x = bin, y = R2, color = ADI)) +
 
 > Figure 5. Comparison of How Each Area Deprivation Index (ADI) Is Associated With Mortality by Level of Score Disagreement. B. Mortality ~ ADI + Population Size.
 
-```{r, echo = F}
+```{r, echo = F, fig.width=8, fig.height=4}
 ggplot(results_pop, aes(x = bin, y = R2, color = ADI)) +
   geom_point(size = 4, position = position_dodge(width = 0.55)) +
   geom_errorbar(aes(ymin = LCL, ymax = UCL), width = 0.18, position = position_dodge(width = 0.55), linewidth = 0.7) +
   annotate("text", x = 4, y = 0.25, label = "*", size = 10) +  # for ≥40-100
-  labs(
-    title = "Mortality ~ ADI + Population Size",
-    x = "Absolute ADI Difference",
-    y = expression(R^2),
-    color = "ADI"
-  ) +
-  scale_color_manual(
-    values = c("Reproducible" = "#5ab4ac", "Neighborhood Atlas" = "#d8b365"),
-    breaks = c("Reproducible","Neighborhood Atlas"),
-    labels = c("Reproducible","Neighborhood\nAtlas")
-  ) +
-  theme_light(base_size = 18) +
-  coord_cartesian(ylim = c(0, 0.65))  
+  labs(title = "Mortality ~ ADI + Population Size", x = "Absolute ADI Difference", y = expression(R^2), color = "ADI") +
+  scale_color_manual(values = c("Reproducible" = "#5ab4ac", "Neighborhood Atlas" = "#d8b365"), breaks = c("Reproducible","Neighborhood Atlas"), labels = c("Reproducible","Neighborhood\nAtlas")) +
+  theme_light(base_size = 16) +
+  coord_cartesian(ylim = c(0, 0.65))   
 ```
 
 <br><br>
