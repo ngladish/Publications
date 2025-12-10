@@ -1895,7 +1895,6 @@ ggplot() +
 > Figure 4. County-Level Map of Score Differences Between the Neighborhood Atlas Area Deprivation Index (ADI) and Reproducible ADI
 
 ```{r, echo=F}
-ACS_C_2022_Geometry <- ACS_C_2022_Geometry %>% shift_geometry() %>% left_join(ADI_C_Data, by = "GEOID")
 ggplot() + 
   geom_sf(data = ACS_C_2022_Geometry, aes(fill = Diff_NA_ReADI)) + 
   scale_fill_gradientn(colours = rev(ocean.curl(200)), limits = c(-100,100), name = "ADI Difference", guide = "colourbar") +
