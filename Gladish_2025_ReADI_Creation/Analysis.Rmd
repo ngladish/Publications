@@ -814,9 +814,6 @@ These difference scores are added to the CBG-, tract-, and county-level ADI data
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code933">Show Code</button>
   <div id="code933" class="collapse">
 ```{r}
-#load("ADI_CBG_Data.RData")
-#load("ADI_CT_Data.RData")
-#load("ADI_C_Data.RData")
 ADI_CBG_Data$Diff_NA_ReADI <- ADI_CBG_Data$NA_ADI - ADI_CBG_Data$ReADI_CBG_NR
 ADI_CT_Data$Diff_NA_ReADI <- ADI_CT_Data$NA_ADI - ADI_CT_Data$ReADI_CT_NR
 ADI_C_Data$Diff_NA_ReADI <- ADI_C_Data$NA_ADI - ADI_C_Data$ReADI_C_NR
