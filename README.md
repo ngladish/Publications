@@ -106,6 +106,8 @@ methylation.**\
 *Translational Psychiatry.* 2018;8:194.\
 <doi:10.1038/s41398-018-0252-1>
 
+[Access Here](https://www.nature.com/articles/s41398-018-0252-1)
+
 (Open access under a Creative Commons Attribution 4.0 license.)
 
 <br>
