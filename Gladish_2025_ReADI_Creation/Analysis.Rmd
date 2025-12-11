@@ -663,7 +663,7 @@ To benchmark against the original ADI, we also attach Singh (2003)’s published
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code663">Show Code</button>
   <div id="code663" class="collapse">
 ```{r}
-load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/ReADI_2022_Wt.RData"))
+load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/Data/ReADI_2022_Wt.RData"))
 
 ## 1. Defining the NA-ADI/Singh factor score coefficients
 na_adi_weights <- c(
@@ -715,7 +715,7 @@ We store the Singh tract loadings alongside the ReADI weights in ReADI_2022_Wt, 
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code715">Show Code</button>
   <div id="code715" class="collapse">
 ```{r, eval}
-load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/ReADI_2022_Loadings.RData"))
+load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/Data/ReADI_2022_Loadings.RData"))
 
 ## 1. Defining the NA-ADI/Singh factor score coefficients
 na_adi_loadings <- c(
@@ -1058,12 +1058,14 @@ Using this approach we identify:
 
 These final urban–rural and region labels are stored in ADI_CBG_Data and ADI_CT_Data and used in all subsequent stratified and bias analyses.
 
+The county geometry objects used here (ACS_CBG_2022_Geometry, ACS_CT_2022_Geometry, and ACS_C_2022_Geometry) are created in the ReADI construction script [ReADI_2022_Creation.Rmd](https://github.com/ngladish/ReADI/blob/main/2018-2022/ReADI_2022_Creation.Rmd).
+
 <div style="margin:16px 0">
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1062">Show Code</button>
   <div id="code1062" class="collapse">
 ```{r}
-load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/ACS_CBG_2022_Geometry.RData"))
-load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/ACS_CT_2022_Geometry.RData"))
+load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/Data/ACS_CBG_2022_Geometry.RData"))
+load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/Data/ACS_CT_2022_Geometry.RData"))
 
 ## Download and read Census 2020 urban area shapefile --------------------------
 temp_dir <- tempdir()
@@ -1875,18 +1877,10 @@ For each geography (block group, tract, county), we:
 - compute the range (minimum to maximum) and standard deviation of Diff_NA_ReADI among non-missing observations, and print these as “min to max (SD, sd_value)” to describe how far the indices can diverge; and  
 - count how many units have an absolute difference of at least 20 points (Diff_NA_ReADI <= -20 or >= 20), and report this as “X of N units (Y%)”, corresponding to the “discrepancies of 20 points or greater” statistics in the Results.
 
-The geometry object ACS_C_2022_Geometry.RData is loaded here in preparation for later county-level maps of these differences, but is not used directly in this summary chunk.
-
 <div style="margin:16px 0">
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1879">Show Code</button>
   <div id="code1879" class="collapse">
 ```{r}
-load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/ACS_C_2022_Geometry.RData"))
-#load("ADI_CBG_Data.RData")
-#load("ADI_C_Data.RData")
-#load("ADI_CT_Data.RData")
-
-# Stats
 ## Range of difference by geography
 range <- range(ADI_CBG_Data$Diff_NA_ReADI, na.rm = T)
 sd <- sd(ADI_CBG_Data$Diff_NA_ReADI, na.rm = T)
@@ -1938,6 +1932,7 @@ The county geometry objects used here (ACS_CBG_2022_Geometry, ACS_CT_2022_Geomet
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1936">Show Code</button>
   <div id="code1936" class="collapse">
 ```{r, eval=F}
+load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/Data/ACS_C_2022_Geometry.RData"))
 ACS_C_2022_Geometry <- ACS_C_2022_Geometry %>% shift_geometry() %>% left_join(ADI_C_Data, by = "GEOID")
 ggplot() + 
   geom_sf(data = ACS_C_2022_Geometry, aes(fill = Diff_NA_ReADI)) + 
@@ -1952,6 +1947,7 @@ ggplot() +
 > Figure 4. County-Level Map of Score Differences Between the Neighborhood Atlas Area Deprivation Index (ADI) and Reproducible ADI
 
 ```{r, echo=F, fig.width=10, fig.height=8}
+load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/Data/ACS_C_2022_Geometry.RData"))
 ACS_C_2022_Geometry <- ACS_C_2022_Geometry %>% shift_geometry() %>% left_join(ADI_C_Data, by = "GEOID")
 ggplot() + 
   geom_sf(data = ACS_C_2022_Geometry, aes(fill = Diff_NA_ReADI)) + 
