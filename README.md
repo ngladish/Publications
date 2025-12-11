@@ -17,7 +17,7 @@ modifications.
 -   [ReADI (JAMA Network Open
     2025)](#1-estimation-of-mortality-via-the-neighborhood-atlas-and-reproducible-area-deprivation-indices-readi)
 -   [GUTS sperm DNA methylation (Translational Psychiatry
-    2018)](#2-exposure-to-childhood-abuse-is-associated-with-human-sperm-dna-methylation)
+    2018)](#2-exposure-to-childhood-abuse-is-associated-with-human-sperm-dna-methylation-guts)
 -   [General notes](#general-notes-on-using-this-repository)
 
 ------------------------------------------------------------------------
