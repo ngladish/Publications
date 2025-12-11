@@ -19,7 +19,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [macos-latest, windows-latest]
-        r-version: ["4.4.1"]
+        r-version: ["4.5.0"]
 
     env:
       RENV_CONFIG_INSTALL_FROM_SOURCE: "never"
