@@ -397,8 +397,8 @@ Using ACS 2011–2015 total population (B01003_001), we:
 These tract-level 2015 NA-ADI scores are then merged to the CDC mortality data for the 2011–2015 analyses.
 
 <div style="margin:16px 0">
-  <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code581">Show Code</button>
-  <div id="code518" class="collapse">
+  <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code401">Show Code</button>
+  <div id="code401" class="collapse">
 ```{r}
 #Basic sanity checks on NA_ADI_CBG_2022
 stopifnot(all(c("GEOID", "NA_ADI") %in% names(NA_ADI_CBG_2015)),
