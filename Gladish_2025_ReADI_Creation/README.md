@@ -8,7 +8,7 @@ This repository contains the **fully reproducible analysis pipeline** for:
 > <doi:10.1001/jamanetworkopen.2025.46800>
 
 
-To view the fully rendered analysis code click [here](<file:///Users/ngladish/Documents/GitHub/Publications/Gladish_2025_ReADI_Creation/Analysis.html>)
+To view the fully rendered analysis code click [here](<https://ngladish.github.io/Publications/Gladish_2025_ReADI_Creation/Analysis.html>)
 
 The code in this folder reproduces all analyses reported in the paper:
 
