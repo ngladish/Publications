@@ -400,6 +400,7 @@ These tract-level 2015 NA-ADI scores are then merged to the CDC mortality data f
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code401">Show Code</button>
   <div id="code401" class="collapse">
 ```{r}
+
 #Basic sanity checks on NA_ADI_CBG_2022
 stopifnot(all(c("GEOID", "NA_ADI") %in% names(NA_ADI_CBG_2015)),
   is.character(NA_ADI_CBG_2015$GEOID),
@@ -448,6 +449,7 @@ if (any(is.na(NA_ADI_CT_2015$NA_ADI))) {
   warning("Some tract-level NA-ADI values are NA after aggregation.")
 }
 #save(NA_ADI_CT_2015, file = "NA_ADI_CT_2015.RData")
+
 ```
   </div>
 </div>
