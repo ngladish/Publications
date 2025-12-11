@@ -759,7 +759,7 @@ The ReADI components (raw and standardized) and population weights come directly
 
 The NA-ADI scores used here are the official national percentiles downloaded from the Neighborhood Atlas.
 
-Because the Neighborhood Atlas does not release the underlying code or intermediate composite variables, we reconstructed NA-ADI–style components to enable indicator-level and methodological comparisons. These reverse-engineered NA-ADI components are described in detail in [RENA_2022.Rmd](https://github.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/RENA/RENA_2022.Rmd). Briefly, we implemented the published variable definitions, thresholds, and transformations from Singh (2003) and Kind et al. (2014), and aligned our approach with the independently developed replication by [Petterson; 2023](https://academic.oup.com/healthaffairsscholar/article/1/5/qxad063/7342005), who reported correlations >0.9999 between his reconstructed scores and the official NA-ADI.
+Because the Neighborhood Atlas does not release the underlying code or intermediate composite variables, we reconstructed NA-ADI–style components to enable indicator-level and methodological comparisons. These reverse-engineered NA-ADI components are described in detail in [RENA_2022.Rmd](https://github.com/ngladish/Publications/blob/main/Gladish_2025_ReADI_Creation/RENA/RENA_2022.Rmd). Briefly, we implemented the published variable definitions, thresholds, and transformations from Singh (2003) and Kind et al. (2014), and aligned our approach with the independently developed replication by [Petterson; 2023](https://academic.oup.com/healthaffairsscholar/article/1/5/qxad063/7342005), who reported correlations >0.9999 between his reconstructed scores and the official NA-ADI.
 
 In all analyses:
 
