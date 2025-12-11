@@ -36,7 +36,7 @@ corresponding analysis.
 
 ## Manuscripts
 
-### 1. Estimation of Mortality via the Neighborhood Atlas and Reproducible Area Deprivation Indices (ReADI) {#1-estimation-of-mortality-via-the-neighborhood-atlas-and-reproducible-area-deprivation-indices}
+### 1. Estimation of Mortality via the Neighborhood Atlas and Reproducible Area Deprivation Indices (ReADI)
 
 <br>
 
@@ -94,7 +94,7 @@ with this code and publicly available datasets.
 
 ------------------------------------------------------------------------
 
-### 2. Exposure to childhood abuse is associated with human sperm DNA methylation (GUTS) {#2-exposure-to-childhood-abuse-is-associated-with-human-sperm-dna-methylation}
+### 2. Exposure to childhood abuse is associated with human sperm DNA methylation (GUTS)
 
 <br>
 
@@ -155,7 +155,7 @@ associated with DNA methylation in sperm. Key features:
 
 ------------------------------------------------------------------------
 
-## General notes on using this repository {#general-notes-on-using-this-repository}
+## General notes on using this repository
 
 <br>
 
