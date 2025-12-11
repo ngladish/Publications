@@ -84,6 +84,40 @@ div.card {
   }
 ```
 
+```{r setup, include=FALSE}
+# Warn if R version is older than what was used for the analysis
+if (getRversion() < "4.4.1") {
+  warning(
+    "This analysis was developed under R 4.4.1. ",
+    "You are using R ", as.character(getRversion()),
+    ". If you see package errors, consider upgrading to R 4.4.1."
+  )
+}
+
+# Check for required packages and fail with a clear message if missing
+needed_pkgs <- c(
+  "sf", "s2", "tidyverse", "dplyr", "ggplot2",
+  "corrplot", "MBESS", "Metrics", "plyr", "tidyr", "tibble"
+  # add or remove package names here if needed
+)
+
+missing_pkgs <- needed_pkgs[!vapply(needed_pkgs, requireNamespace, logical(1), quietly = TRUE)]
+
+if (length(missing_pkgs) > 0) {
+  msg <- paste0(
+    "The following R packages are missing: ",
+    paste(missing_pkgs, collapse = ", "), ".\n\n",
+    "Please run renv::restore() in the project root\n",
+    "  (Gladish_2025_ReADI_Creation)\n",
+    "before knitting this document.\n\n",
+    "If renv::restore() fails with errors about 's2', 'cmake', or 'abseil',\n",
+    "see the 'R and system requirements' section of the README for the\n",
+    "one-time system commands to run on your operating system."
+  )
+  stop(msg, call. = FALSE)
+}
+```
+
 # Introduction
 ***
 
@@ -355,6 +389,7 @@ NA_ADI_CBG_2015 <- NA_ADI_CBG_2015[complete.cases(NA_ADI_CBG_2015$NA_ADI),]
 > Census Tract (population-weighted from CBG)
 
 Using ACS 2011–2015 total population (B01003_001), we:
+
 1. Obtain CBG-level population counts,
 2. Compute within-tract CBG weights as the proportion of tract population in each CBG, and
 3. Aggregate CBG NA-ADI scores to the tract level via population-weighted means, excluding suppressed CBGs.
@@ -365,8 +400,6 @@ These tract-level 2015 NA-ADI scores are then merged to the CDC mortality data f
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code581">Show Code</button>
   <div id="code518" class="collapse">
 ```{r}
-#load("NA_ADI_CBG_2015.RData")
-
 #Basic sanity checks on NA_ADI_CBG_2022
 stopifnot(all(c("GEOID", "NA_ADI") %in% names(NA_ADI_CBG_2015)),
   is.character(NA_ADI_CBG_2015$GEOID),
@@ -568,7 +601,6 @@ Tracts with missing or suppressed USALEEP estimates are excluded from all mortal
   <div id="code570" class="collapse">
 ```{r}
 load(url("https://raw.githubusercontent.com/ngladish/ReADI/main/2011-2015/ReADI_CT_2015.RData"))
-#load("NA_ADI_CT_2015.RData")
 ADI_Mortality_Data <- read.csv("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/USALEEP_Mortality/US_A.csv", colClasses = c(Tract.ID = "character"), stringsAsFactors = FALSE)
 ADI_Mortality_Data$GEOID <- ADI_Mortality_Data$Tract.ID
 stopifnot(all(nchar(ADI_Mortality_Data$GEOID) == 11),
@@ -617,12 +649,11 @@ Pop_Total_2015$variable <- NULL
 
 <br>
 
-ReADI variable weights come from the one-factor models fit in the ReADI 2022 creation script [ReADI_2022_Creation.Rmd](https://github.com/ngladish/ReADI/blob/main/2018-2022/ReADI_2022_Creation.Rmd). For each geography, we use psych::fa (principal factor method with population weights) and take the factor score coefficients ($weights), i.e., the linear weights applied to z-standardized census variables to generate the factor score. In this document we refer to these coefficients as the “ReADI weights.” 
+ReADI variable weights come from the one-factor models fit in the ReADI 2022 creation script [ReADI_2022_Creation.Rmd](https://github.com/ngladish/ReADI/blob/main/2018-2022/ReADI_2022_Creation.Rmd). For each geography, we use the **fa()** function in the **psych** package (principal factor method with population weights) and take the factor score coefficients ($weights), i.e., the linear weights applied to z-standardized census variables to generate the factor score. In this document we refer to these coefficients as the “ReADI weights.” 
 
 To benchmark against the original ADI, we also attach Singh (2003)’s published factor score coefficients (the “Tract score coefficient” column in Table 1) to the same set of variables, storing them in the NA_ADI column of ReADI_2022_Wt. Thus:
 
 - ReADI scores are the factor scores from our own models, rescaled to 0–100.
-
 - NA-ADI weights are Singh’s published factor score coefficients, used only for comparing weight/loading patterns, not to recompute the official Neighborhood Atlas ADI.
 
 <div style="margin:16px 0">
@@ -670,13 +701,10 @@ setdiff(ADI_2022_Wt$Vars, na_adi_df$Vars)   # anything here just won't get NA_AD
 
 ReADI variable loadings come from the one-factor models fit in the ReADI 2022 creation script [ReADI_2022_Creation.Rmd](https://github.com/ngladish/ReADI/blob/main/2018-2022/ReADI_2022_Creation.Rmd). For comparison with our ReADI weights and loadings, we also attach the original factor loadings reported by Singh (2003) for the 1990 census tract-level ADI. These loadings come directly from Table 1 of the Singh paper (column “Tract Loading”) and correspond to the same 17 component variables we use in ReADI (e.g., median family income, income disparity, % below poverty, % crowding, etc.).
 
-In Singh’s work, these loadings describe the strength and direction of the association between each standardized census variable and the single latent deprivation factor. Kind et al. later reused the corresponding factor score coefficients (the weights) from this same 1990 tract model when constructing the Neighborhood Atlas ADI. Here, we explicitly separate:
-
-ReADI weights/loadings, estimated de novo from contemporary ACS data, and
-
-Singh (2003) tract loadings, taken verbatim from the original 1990 factor model.
+In Singh’s work, these loadings describe the strength and direction of the association between each standardized census variable and the single latent deprivation factor. Kind et al. later reused the corresponding factor score coefficients (the weights) from this same 1990 tract model when constructing the Neighborhood Atlas ADI. Here, we explicitly separate ReADI weights/loadings, estimated de novo from contemporary ACS data, and Singh (2003) tract loadings, taken verbatim from the original 1990 factor model.
 
 We store the Singh tract loadings alongside the ReADI weights in ReADI_2022_Wt, aligned by variable name. This allows us to directly compare:
+
 (i) ReADI vs Singh loadings, and
 (ii) ReADI vs NA-ADI weights/loadings, using a consistent set of 17 harmonized variables.
 
@@ -745,7 +773,6 @@ vars   <- c("MEDFI", "INCDIS", "BELPL", "PL150", "EDU9YR", "HSDPNHIGH", "EMPWC",
 
 # CBG --------------------------------------------------------------------
 load(url("https://raw.githubusercontent.com/ngladish/ReADI/main/2018-2022/ReADI_CBG_2022.RData"))
-#load("NA_ADI_CBG_2022.RData")
 load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/RENA/RENA_ADI_2022_CBG_RawVars.RData"))
 
 NA_ADI_CBG_2022 <- NA_ADI_CBG_2022[, c("GEOID", "NA_ADI")]
@@ -762,7 +789,6 @@ stopifnot(!anyDuplicated(ADI_CBG_Data$GEOID))
 
 # CT --------------------------------------------------------------------
 load(url("https://raw.githubusercontent.com/ngladish/ReADI/main/2018-2022/ReADI_CT_2022.RData"))
-#load("NA_ADI_CT_2022.RData")
 load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/RENA/RENA_ADI_2022_CT_RawVars.RData"))
 NA_ADI_CT_2022 <- NA_ADI_CT_2022[, c("GEOID", "NA_ADI")]
 ADI_CT_Data <- plyr::join(ReADI_CT_2022, NA_ADI_CT_2022, by = "GEOID", type = "left")
@@ -777,7 +803,6 @@ stopifnot(!anyDuplicated(ADI_CT_Data$GEOID))
 
 # C --------------------------------------------------------------------
 load(url("https://raw.githubusercontent.com/ngladish/ReADI/main/2018-2022/ReADI_C_2022.RData"))
-#load("NA_ADI_C_2022.RData")
 load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/RENA/RENA_ADI_2022_C_RawVars.RData"))
 NA_ADI_C_2022 <- NA_ADI_C_2022[, c("GEOID", "NA_ADI")]
 ADI_C_Data <- plyr::join(ReADI_C_2022, NA_ADI_C_2022, by = "GEOID", type = "left")
@@ -800,15 +825,16 @@ stopifnot(!anyDuplicated(ADI_C_Data$GEOID))
 
 <br>
 
-To quantify how much the Neighborhood Atlas ADI (NA-ADI) diverges from ReADI, we compute a simple difference score at each geography (CBG, tract, county):
+To quantify how much the Neighborhood Atlas ADI (NA-ADI) diverges from ReADI, we compute a simple difference score at each geography (census block group (CBG), census tract (CT), and county (C)):
 
 Diff_NA_ReADI = NA_ADI − ReADI
 
 Throughout, ReADI is treated as the reference implementation. Under this convention:
+
 - Diff_NA_ReADI > 0 → NA-ADI assigns higher (more deprived) scores than ReADI (over-estimation of deprivation relative to ReADI).
 - Diff_NA_ReADI < 0 → NA-ADI assigns lower (less deprived) scores than ReADI (under-estimation of deprivation relative to ReADI).
 
-These difference scores are added to the CBG-, tract-, and county-level ADI datasets and are used in all subsequent analyses of agreement, bias, and urban–rural or regional patterns.
+These difference scores are added to the CBG-, CT-, and county-level ADI datasets and are used in all subsequent analyses of agreement, bias, and urban–rural or regional patterns.
 
 <div style="margin:16px 0">
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code933">Show Code</button>
@@ -832,6 +858,7 @@ ADI_C_Data$Diff_NA_ReADI <- ADI_C_Data$NA_ADI - ADI_C_Data$ReADI_C_NR
 <br>
 
 To better understand why NA-ADI and ReADI diverge, we examined how the difference between the two indices (Diff_NA_ReADI) relates to each underlying component variable across geographies. The code below creates a helper function (make_diff_cor) that:
+
 - Checks that all required ReADI component variables are present in the input dataset.
 - For a given geography (block group, tract, or county), calculates the Pearson correlation between Diff_NA_ReADI and each component (e.g., median family income, income disparity, below-poverty indicators, housing characteristics).
 - Obtains the corresponding p-values from cor.test() for each correlation.
@@ -898,6 +925,7 @@ To evaluate how closely each ADI’s empirical behavior matches its factor struc
 We do this separately for ReADI and NA-ADI and for each geography (census block group, census tract, and county), then stack the results into a single long-format dataset (ADI_Cor_L).
 
 Concretely:
+
 - We load the combined component datasets for ReADI and the reverse-engineered NA-ADI at each geography (ADI_CBG_Data, ADI_CT_Data, ADI_C_Data) and the table of Singh/Kind factor loadings (ADI_2022_Loadings).
 - For each geography, we compute the correlation between the ADI score (ReADI or NA-ADI) and each standardized component.
 - We strip the variable suffixes (_Re, _NA) to recover the common component names, then merge in the corresponding Singh/Kind loadings and ReADI loadings.
@@ -958,11 +986,32 @@ build_cor_df <- function(dat, geo_label, na_target, re_target, na_vars, re_vars,
 
 # Build for each geography ------------------------------------------------------
 
-ADI_Cor_CBG <- build_cor_df(dat = ADI_CBG_Data, geo_label = "CBG", na_target = "NA_ADI", re_target = "ReADI_CBG_NR", na_vars = NA_Vars, re_vars = Re_Vars, var_labels = Variables, loadings_df = ADI_2022_Loadings)
+ADI_Cor_CBG <- build_cor_df(dat = ADI_CBG_Data, 
+                            geo_label  = "CBG",
+                            na_target   = "NA_ADI", 
+                            re_target   = "ReADI_CBG_NR", 
+                            na_vars     = NA_Vars, 
+                            re_vars     = Re_Vars,
+                            var_labels  = Variables, 
+                            loadings_df = ADI_2022_Loadings)
 
-ADI_Cor_CT <- build_cor_df(dat        = ADI_CT_Data,geo_label  = "CT",na_target  = "NA_ADI",re_target  = "ReADI_CT_NR", na_vars    = NA_Vars, re_vars    = Re_Vars, var_labels = Variables, loadings_df = ADI_2022_Loadings)
+ADI_Cor_CT <- build_cor_df(dat = ADI_CT_Data,
+                           geo_label   = "CT",
+                           na_target   = "NA_ADI",
+                           re_target   = "ReADI_CT_NR", 
+                           na_vars     = NA_Vars,
+                           re_vars     = Re_Vars, 
+                           var_labels  = Variables, 
+                           loadings_df = ADI_2022_Loadings)
 
-ADI_Cor_C <- build_cor_df(dat        = ADI_C_Data, geo_label  = "C", na_target  = "NA_ADI", re_target  = "ReADI_C_NR", na_vars    = NA_Vars, re_vars    = Re_Vars, var_labels = Variables, loadings_df = ADI_2022_Loadings)
+ADI_Cor_C <- build_cor_df(dat = ADI_C_Data, 
+                          geo_label   = "C", 
+                          na_target   = "NA_ADI", 
+                          re_target   = "ReADI_C_NR", 
+                          na_vars     = NA_Vars, 
+                          re_vars     = Re_Vars, 
+                          var_labels  = Variables, 
+                          loadings_df = ADI_2022_Loadings)
 
 # Combine and save --------------------------------------------------------------
 
@@ -982,21 +1031,23 @@ ADI_Cor_L$Geography <- ifelse(ADI_Cor_L$Geo == "C", "County", ADI_Cor_L$Geograph
 
 <br>
 
-To evaluate potential urban–rural bias in ReADI and NA-ADI, we assign an urban/rural flag to census tracts and block groups using the 2020 Census Urban Area (UAC10) shapefile from the TIGER/Line database (downloaded directly from the U.S. Census Bureau). After harmonizing coordinate reference systems, each tract and block group polygon is intersected with the UAC10 polygons: any unit that overlaps a designated urban area is labeled Urban, and all others are labeled Rural.
+To evaluate potential urban–rural bias in ReADI and NA-ADI, we assign an urban/rural flag to census tracts and block groups using the 2020 Census Urban Area (UAC10) shapefile from the [TIGER/Line database (downloaded directly from the U.S. Census Bureau)](https://www2.census.gov/geo/tiger/TIGER2020/UAC/). After harmonizing coordinate reference systems, each tract and block group polygon is intersected with the UAC10 polygons: any unit that overlaps a designated urban area is labeled Urban, and all others are labeled Rural.
 
-We then attach state FIPS, state name, and Census region (Midwest, Northeast, South, West; including the District of Columbia in the South) using the tigris::fips_codes crosswalk. Geometry is dropped and these labels are merged into the analysis datasets (ADI_CBG_Data and ADI_CT_Data), so downstream models can use urban/rural and region without needing spatial objects.
+We then attach state FIPS, state name, and Census region (Midwest, Northeast, South, West; including the District of Columbia in the South) using the **fips_codes** crosswalk object in the **tigris** package. Geometry is dropped and these labels are merged into the analysis datasets (ADI_CBG_Data and ADI_CT_Data), so downstream models can use urban/rural and region without needing spatial objects.
 
 We do not classify counties as urban or rural. Although ReADI is calculated at the county level for policy interpretation and linkage to county-level health data, counties typically contain a mix of urban and rural tracts, making a binary county label misleading. All formal urban–rural bias analyses are therefore conducted at the census tract level, with block groups used descriptively.
 
 Using this approach we identify:
 
-- Census block groups (n = 240,165): 30,318 rural and 209,847 urban
+- Census block groups
+  - N: 240,165 total (30,318 rural; 209,847 urban)
   - Midwest: 55,119 total (9,662 rural; 45,457 urban)
   - Northeast: 43,456 total (3,677 rural; 39,779 urban)
   - South: 86,845 total (13,412 rural; 73,433 urban)
   - West: 52,255 total (3,548 rural; 48,707 urban)
   
-- Census tracts (n = 84,535): 8,410 rural and 76,125 urban
+- Census tracts
+  - N: 84,535 total (8,410 rural; 76,125 urban)
   - Midwest: 18,421 total (2,487 rural; 15,934 urban)
   - Northeast: 14,551 total (994 rural; 13,557 urban)
   - South: 31,995 total (3,878 rural; 28,117 urban)
@@ -1010,8 +1061,6 @@ These final urban–rural and region labels are stored in ADI_CBG_Data and ADI_C
 ```{r}
 load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/ACS_CBG_2022_Geometry.RData"))
 load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/ACS_CT_2022_Geometry.RData"))
-#load("ADI_CBG_Data.RData")
-#load("ADI_CT_Data.RData")
 
 ## Download and read Census 2020 urban area shapefile --------------------------
 temp_dir <- tempdir()
@@ -1082,11 +1131,15 @@ table(ACS_CBG_2022_Geometry$region, ACS_CBG_2022_Geometry$urban_label)
 
 stopifnot(anyDuplicated(ACS_CBG_2022_Geometry$GEOID) == 0, anyDuplicated(ADI_CBG_Data$GEOID) == 0, anyDuplicated(ACS_CT_2022_Geometry$GEOID) == 0, anyDuplicated(ADI_CT_Data$GEOID) == 0)
 
-ACS_CBG_2022_Geometry <- ACS_CBG_2022_Geometry %>% st_drop_geometry() %>% select(GEOID, STATEFP, state_name, urban_label, region)
+ACS_CBG_2022_Geometry <- ACS_CBG_2022_Geometry %>% 
+  st_drop_geometry() %>% 
+  select(GEOID, STATEFP, state_name, urban_label, region)
 ADI_CBG_Data <- plyr::join(ADI_CBG_Data, ACS_CBG_2022_Geometry, by   = "GEOID", type = "left")
 
-ACS_CT_2022_Geometry <- ACS_CT_2022_Geometry %>% st_drop_geometry() %>% select(GEOID, STATEFP, state_name, urban_label, region)
-ADI_CT_Data <- plyr::join(ADI_CT_Data, ACS_CT_2022_Geometry, by   = "GEOID", type = "left")
+ACS_CT_2022_Geometry <- ACS_CT_2022_Geometry %>% 
+  st_drop_geometry() %>% 
+  select(GEOID, STATEFP, state_name, urban_label, region)
+ADI_CT_Data <- plyr::join(ADI_CT_Data, ACS_CT_2022_Geometry, by = "GEOID", type = "left")
 
 ## Regional/urban summaries --------------------------------------------------------
 

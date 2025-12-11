@@ -2950,19 +2950,20 @@ library(quantreg)</code></pre>
 ##  [1] tidyselect_1.2.1   farver_2.1.2       S7_0.2.0           fastmap_1.2.0      TH.data_1.1-4     
 ##  [6] bayestestR_0.17.0  digest_0.6.37      timechange_0.3.0   estimability_1.5.1 lifecycle_1.0.4   
 ## [11] survival_3.8-3     magrittr_2.0.3     compiler_4.5.0     rlang_1.1.6        sass_0.4.10       
-## [16] tools_4.5.0        yaml_2.3.10        knitr_1.50         classInt_0.4-11    plyr_1.8.9        
-## [21] xml2_1.3.8         mapproj_1.2.12     RColorBrewer_1.1-3 multcomp_1.4-28    KernSmooth_2.23-26
-## [26] withr_3.0.2        grid_4.5.0         datawizard_1.3.0   xtable_1.8-4       e1071_1.7-16      
-## [31] colorspace_2.1-1   MASS_7.3-65        emmeans_1.11.1     scales_1.4.0       dichromat_2.0-0.1 
-## [36] insight_1.4.2      cli_3.6.5          mvtnorm_1.3-3      rmarkdown_2.29     crayon_1.5.3      
-## [41] generics_0.1.4     rstudioapi_0.17.1  tzdb_0.5.0         parameters_0.28.3  DBI_1.2.3         
-## [46] cachem_1.1.0       proxy_0.4-27       splines_4.5.0      maps_3.4.3         rvest_1.0.4       
-## [51] vctrs_0.6.5        Matrix_1.7-3       sandwich_3.1-1     jsonlite_2.0.0     hms_1.1.3         
-## [56] jquerylib_0.1.4    units_0.8-7        glue_1.8.0         codetools_0.2-20   stringi_1.8.7     
-## [61] gtable_0.3.6       pillar_1.10.2      rappdirs_0.3.3     htmltools_0.5.8.1  R6_2.6.1          
-## [66] evaluate_1.0.3     lattice_0.22-7     bslib_0.9.0        MatrixModels_0.5-4 class_7.3-23      
-## [71] Rcpp_1.0.14        uuid_1.2-1         coda_0.19-4.1      gridExtra_2.3      xfun_0.52         
-## [76] zoo_1.8-14         pkgconfig_2.0.3</code></pre>
+## [16] tools_4.5.0        yaml_2.3.10        knitr_1.50         labeling_0.4.3     curl_7.0.0        
+## [21] classInt_0.4-11    plyr_1.8.9         xml2_1.3.8         mapproj_1.2.12     RColorBrewer_1.1-3
+## [26] multcomp_1.4-28    KernSmooth_2.23-26 withr_3.0.2        Metrics_0.1.4      grid_4.5.0        
+## [31] datawizard_1.3.0   xtable_1.8-4       e1071_1.7-16       colorspace_2.1-1   MASS_7.3-65       
+## [36] emmeans_1.11.1     scales_1.4.0       dichromat_2.0-0.1  insight_1.4.2      cli_3.6.5         
+## [41] mvtnorm_1.3-3      rmarkdown_2.29     crayon_1.5.3       generics_0.1.4     rstudioapi_0.17.1 
+## [46] tzdb_0.5.0         parameters_0.28.3  DBI_1.2.3          cachem_1.1.0       proxy_0.4-27      
+## [51] splines_4.5.0      maps_3.4.3         rvest_1.0.4        s2_1.1.9           vctrs_0.6.5       
+## [56] Matrix_1.7-3       sandwich_3.1-1     jsonlite_2.0.0     hms_1.1.3          jquerylib_0.1.4   
+## [61] units_0.8-7        glue_1.8.0         codetools_0.2-20   stringi_1.8.7      gtable_0.3.6      
+## [66] pillar_1.10.2      rappdirs_0.3.3     htmltools_0.5.8.1  R6_2.6.1           wk_0.9.4          
+## [71] evaluate_1.0.3     lattice_0.22-7     bslib_0.9.0        MatrixModels_0.5-4 class_7.3-23      
+## [76] Rcpp_1.0.14        uuid_1.2-1         nlme_3.1-168       coda_0.19-4.1      gridExtra_2.3     
+## [81] mgcv_1.9-3         xfun_0.52          zoo_1.8-14         pkgconfig_2.0.3</code></pre>
 </div>
 </div>
 <p><br><br></p>
@@ -3226,20 +3227,21 @@ NA_ADI_CBG_2015 &lt;- NA_ADI_CBG_2015[complete.cases(NA_ADI_CBG_2015$NA_ADI),]
 <blockquote>
 <p>Census Tract (population-weighted from CBG)</p>
 </blockquote>
-<p>Using ACS 2011–2015 total population (B01003_001), we: 1. Obtain
-CBG-level population counts, 2. Compute within-tract CBG weights as the
-proportion of tract population in each CBG, and 3. Aggregate CBG NA-ADI
-scores to the tract level via population-weighted means, excluding
-suppressed CBGs.</p>
+<p>Using ACS 2011–2015 total population (B01003_001), we:</p>
+<ol style="list-style-type: decimal">
+<li>Obtain CBG-level population counts,</li>
+<li>Compute within-tract CBG weights as the proportion of tract
+population in each CBG, and</li>
+<li>Aggregate CBG NA-ADI scores to the tract level via
+population-weighted means, excluding suppressed CBGs.</li>
+</ol>
 <p>These tract-level 2015 NA-ADI scores are then merged to the CDC
 mortality data for the 2011–2015 analyses.</p>
 <div style="margin:16px 0">
 <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code581">Show
 Code</button>
 <div id="code518" class="collapse">
-<pre class="r"><code>#load(&quot;NA_ADI_CBG_2015.RData&quot;)
-
-#Basic sanity checks on NA_ADI_CBG_2022
+<pre class="r"><code>#Basic sanity checks on NA_ADI_CBG_2022
 stopifnot(all(c(&quot;GEOID&quot;, &quot;NA_ADI&quot;) %in% names(NA_ADI_CBG_2015)),
   is.character(NA_ADI_CBG_2015$GEOID),
   is.numeric(NA_ADI_CBG_2015$NA_ADI) || is.logical(NA_ADI_CBG_2015$NA_ADI))
@@ -3540,7 +3542,6 @@ all mortality analyses.</p>
 Code</button>
 <div id="code570" class="collapse">
 <pre class="r"><code>load(url(&quot;https://raw.githubusercontent.com/ngladish/ReADI/main/2011-2015/ReADI_CT_2015.RData&quot;))
-#load(&quot;NA_ADI_CT_2015.RData&quot;)
 ADI_Mortality_Data &lt;- read.csv(&quot;https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/USALEEP_Mortality/US_A.csv&quot;, colClasses = c(Tract.ID = &quot;character&quot;), stringsAsFactors = FALSE)
 ADI_Mortality_Data$GEOID &lt;- ADI_Mortality_Data$Tract.ID
 stopifnot(all(nchar(ADI_Mortality_Data$GEOID) == 11),
@@ -3641,21 +3642,22 @@ weights</h3>
 <p><br></p>
 <p>ReADI variable weights come from the one-factor models fit in the
 ReADI 2022 creation script <a href="https://github.com/ngladish/ReADI/blob/main/2018-2022/ReADI_2022_Creation.Rmd">ReADI_2022_Creation.Rmd</a>.
-For each geography, we use psych::fa (principal factor method with
-population weights) and take the factor score coefficients ($weights),
-i.e., the linear weights applied to z-standardized census variables to
-generate the factor score. In this document we refer to these
-coefficients as the “ReADI weights.”</p>
+For each geography, we use the <strong>fa()</strong> function in the
+<strong>psych</strong> package (principal factor method with population
+weights) and take the factor score coefficients ($weights), i.e., the
+linear weights applied to z-standardized census variables to generate
+the factor score. In this document we refer to these coefficients as the
+“ReADI weights.”</p>
 <p>To benchmark against the original ADI, we also attach Singh (2003)’s
 published factor score coefficients (the “Tract score coefficient”
 column in Table 1) to the same set of variables, storing them in the
 NA_ADI column of ReADI_2022_Wt. Thus:</p>
 <ul>
-<li><p>ReADI scores are the factor scores from our own models, rescaled
-to 0–100.</p></li>
-<li><p>NA-ADI weights are Singh’s published factor score coefficients,
-used only for comparing weight/loading patterns, not to recompute the
-official Neighborhood Atlas ADI.</p></li>
+<li>ReADI scores are the factor scores from our own models, rescaled to
+0–100.</li>
+<li>NA-ADI weights are Singh’s published factor score coefficients, used
+only for comparing weight/loading patterns, not to recompute the
+official Neighborhood Atlas ADI.</li>
 </ul>
 <div style="margin:16px 0">
 <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code612">Show
@@ -3713,15 +3715,17 @@ of the association between each standardized census variable and the
 single latent deprivation factor. Kind et al. later reused the
 corresponding factor score coefficients (the weights) from this same
 1990 tract model when constructing the Neighborhood Atlas ADI. Here, we
-explicitly separate:</p>
-<p>ReADI weights/loadings, estimated de novo from contemporary ACS data,
-and</p>
-<p>Singh (2003) tract loadings, taken verbatim from the original 1990
-factor model.</p>
+explicitly separate ReADI weights/loadings, estimated de novo from
+contemporary ACS data, and Singh (2003) tract loadings, taken verbatim
+from the original 1990 factor model.</p>
 <p>We store the Singh tract loadings alongside the ReADI weights in
 ReADI_2022_Wt, aligned by variable name. This allows us to directly
-compare: (i) ReADI vs Singh loadings, and (ii) ReADI vs NA-ADI
-weights/loadings, using a consistent set of 17 harmonized variables.</p>
+compare:</p>
+<ol style="list-style-type: lower-roman">
+<li>ReADI vs Singh loadings, and</li>
+<li>ReADI vs NA-ADI weights/loadings, using a consistent set of 17
+harmonized variables.</li>
+</ol>
 <div style="margin:16px 0">
 <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code686">Show
 Code</button>
@@ -3801,7 +3805,6 @@ Code</button>
 
 # CBG --------------------------------------------------------------------
 load(url(&quot;https://raw.githubusercontent.com/ngladish/ReADI/main/2018-2022/ReADI_CBG_2022.RData&quot;))
-#load(&quot;NA_ADI_CBG_2022.RData&quot;)
 load(url(&quot;https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/RENA/RENA_ADI_2022_CBG_RawVars.RData&quot;))
 
 NA_ADI_CBG_2022 &lt;- NA_ADI_CBG_2022[, c(&quot;GEOID&quot;, &quot;NA_ADI&quot;)]
@@ -3818,7 +3821,6 @@ stopifnot(!anyDuplicated(ADI_CBG_Data$GEOID))
 
 # CT --------------------------------------------------------------------
 load(url(&quot;https://raw.githubusercontent.com/ngladish/ReADI/main/2018-2022/ReADI_CT_2022.RData&quot;))
-#load(&quot;NA_ADI_CT_2022.RData&quot;)
 load(url(&quot;https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/RENA/RENA_ADI_2022_CT_RawVars.RData&quot;))
 NA_ADI_CT_2022 &lt;- NA_ADI_CT_2022[, c(&quot;GEOID&quot;, &quot;NA_ADI&quot;)]
 ADI_CT_Data &lt;- plyr::join(ReADI_CT_2022, NA_ADI_CT_2022, by = &quot;GEOID&quot;, type = &quot;left&quot;)
@@ -3833,7 +3835,6 @@ stopifnot(!anyDuplicated(ADI_CT_Data$GEOID))
 
 # C --------------------------------------------------------------------
 load(url(&quot;https://raw.githubusercontent.com/ngladish/ReADI/main/2018-2022/ReADI_C_2022.RData&quot;))
-#load(&quot;NA_ADI_C_2022.RData&quot;)
 load(url(&quot;https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/RENA/RENA_ADI_2022_C_RawVars.RData&quot;))
 NA_ADI_C_2022 &lt;- NA_ADI_C_2022[, c(&quot;GEOID&quot;, &quot;NA_ADI&quot;)]
 ADI_C_Data &lt;- plyr::join(ReADI_C_2022, NA_ADI_C_2022, by = &quot;GEOID&quot;, type = &quot;left&quot;)
@@ -3855,26 +3856,25 @@ calculation</h3>
 <hr />
 <p><br></p>
 <p>To quantify how much the Neighborhood Atlas ADI (NA-ADI) diverges
-from ReADI, we compute a simple difference score at each geography (CBG,
-tract, county):</p>
+from ReADI, we compute a simple difference score at each geography
+(census block group (CBG), census tract (CT), and county (C)):</p>
 <p>Diff_NA_ReADI = NA_ADI − ReADI</p>
 <p>Throughout, ReADI is treated as the reference implementation. Under
-this convention: - Diff_NA_ReADI &gt; 0 → NA-ADI assigns higher (more
-deprived) scores than ReADI (over-estimation of deprivation relative to
-ReADI). - Diff_NA_ReADI &lt; 0 → NA-ADI assigns lower (less deprived)
-scores than ReADI (under-estimation of deprivation relative to
-ReADI).</p>
-<p>These difference scores are added to the CBG-, tract-, and
-county-level ADI datasets and are used in all subsequent analyses of
-agreement, bias, and urban–rural or regional patterns.</p>
+this convention:</p>
+<ul>
+<li>Diff_NA_ReADI &gt; 0 → NA-ADI assigns higher (more deprived) scores
+than ReADI (over-estimation of deprivation relative to ReADI).</li>
+<li>Diff_NA_ReADI &lt; 0 → NA-ADI assigns lower (less deprived) scores
+than ReADI (under-estimation of deprivation relative to ReADI).</li>
+</ul>
+<p>These difference scores are added to the CBG-, CT-, and county-level
+ADI datasets and are used in all subsequent analyses of agreement, bias,
+and urban–rural or regional patterns.</p>
 <div style="margin:16px 0">
 <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code933">Show
 Code</button>
 <div id="code933" class="collapse">
-<pre class="r"><code>#load(&quot;ADI_CBG_Data.RData&quot;)
-#load(&quot;ADI_CT_Data.RData&quot;)
-#load(&quot;ADI_C_Data.RData&quot;)
-ADI_CBG_Data$Diff_NA_ReADI &lt;- ADI_CBG_Data$NA_ADI - ADI_CBG_Data$ReADI_CBG_NR
+<pre class="r"><code>ADI_CBG_Data$Diff_NA_ReADI &lt;- ADI_CBG_Data$NA_ADI - ADI_CBG_Data$ReADI_CBG_NR
 ADI_CT_Data$Diff_NA_ReADI &lt;- ADI_CT_Data$NA_ADI - ADI_CT_Data$ReADI_CT_NR
 ADI_C_Data$Diff_NA_ReADI &lt;- ADI_C_Data$NA_ADI - ADI_C_Data$ReADI_C_NR
 #save(ADI_CBG_Data, file = &quot;ADI_CBG_Data.RData&quot;)
@@ -3892,15 +3892,20 @@ correlation to components</h3>
 <p>To better understand why NA-ADI and ReADI diverge, we examined how
 the difference between the two indices (Diff_NA_ReADI) relates to each
 underlying component variable across geographies. The code below creates
-a helper function (make_diff_cor) that: - Checks that all required ReADI
-component variables are present in the input dataset. - For a given
-geography (block group, tract, or county), calculates the Pearson
-correlation between Diff_NA_ReADI and each component (e.g., median
-family income, income disparity, below-poverty indicators, housing
-characteristics). - Obtains the corresponding p-values from cor.test()
-for each correlation. - Returns a tidy data frame containing the
-variable code, human-readable variable label, correlation coefficient,
-p-value, and a label for the geographic level.</p>
+a helper function (make_diff_cor) that:</p>
+<ul>
+<li>Checks that all required ReADI component variables are present in
+the input dataset.</li>
+<li>For a given geography (block group, tract, or county), calculates
+the Pearson correlation between Diff_NA_ReADI and each component (e.g.,
+median family income, income disparity, below-poverty indicators,
+housing characteristics).</li>
+<li>Obtains the corresponding p-values from cor.test() for each
+correlation.</li>
+<li>Returns a tidy data frame containing the variable code,
+human-readable variable label, correlation coefficient, p-value, and a
+label for the geographic level.</li>
+</ul>
 <p>We then apply this function separately to the block group, census
 tract, and county-level datasets and row-bind the results into a single
 table (ADI_Diff_Cor). Finally, we sort variables within each geography
@@ -3970,17 +3975,22 @@ component indicators; and<br />
 <p>We do this separately for ReADI and NA-ADI and for each geography
 (census block group, census tract, and county), then stack the results
 into a single long-format dataset (ADI_Cor_L).</p>
-<p>Concretely: - We load the combined component datasets for ReADI and
-the reverse-engineered NA-ADI at each geography (ADI_CBG_Data,
-ADI_CT_Data, ADI_C_Data) and the table of Singh/Kind factor loadings
-(ADI_2022_Loadings). - For each geography, we compute the correlation
-between the ADI score (ReADI or NA-ADI) and each standardized component.
-- We strip the variable suffixes (_Re, _NA) to recover the common
+<p>Concretely:</p>
+<ul>
+<li>We load the combined component datasets for ReADI and the
+reverse-engineered NA-ADI at each geography (ADI_CBG_Data, ADI_CT_Data,
+ADI_C_Data) and the table of Singh/Kind factor loadings
+(ADI_2022_Loadings).</li>
+<li>For each geography, we compute the correlation between the ADI score
+(ReADI or NA-ADI) and each standardized component.</li>
+<li>We strip the variable suffixes (_Re, _NA) to recover the common
 component names, then merge in the corresponding Singh/Kind loadings and
-ReADI loadings. - Finally, we bind the block group, tract, and county
-results into a single dataset (ADI_Cor_L), which is used for the
-loading–correlation regressions and for Figure 2A (ReADI) and Figure 2B
-(NA-ADI) in the Results.</p>
+ReADI loadings.</li>
+<li>Finally, we bind the block group, tract, and county results into a
+single dataset (ADI_Cor_L), which is used for the loading–correlation
+regressions and for Figure 2A (ReADI) and Figure 2B (NA-ADI) in the
+Results.</li>
+</ul>
 <div style="margin:16px 0">
 <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code821">Show
 Code</button>
@@ -4036,11 +4046,32 @@ build_cor_df &lt;- function(dat, geo_label, na_target, re_target, na_vars, re_va
 
 # Build for each geography ------------------------------------------------------
 
-ADI_Cor_CBG &lt;- build_cor_df(dat = ADI_CBG_Data, geo_label = &quot;CBG&quot;, na_target = &quot;NA_ADI&quot;, re_target = &quot;ReADI_CBG_NR&quot;, na_vars = NA_Vars, re_vars = Re_Vars, var_labels = Variables, loadings_df = ADI_2022_Loadings)
+ADI_Cor_CBG &lt;- build_cor_df(dat = ADI_CBG_Data, 
+                            geo_label  = &quot;CBG&quot;,
+                            na_target   = &quot;NA_ADI&quot;, 
+                            re_target   = &quot;ReADI_CBG_NR&quot;, 
+                            na_vars     = NA_Vars, 
+                            re_vars     = Re_Vars,
+                            var_labels  = Variables, 
+                            loadings_df = ADI_2022_Loadings)
 
-ADI_Cor_CT &lt;- build_cor_df(dat        = ADI_CT_Data,geo_label  = &quot;CT&quot;,na_target  = &quot;NA_ADI&quot;,re_target  = &quot;ReADI_CT_NR&quot;, na_vars    = NA_Vars, re_vars    = Re_Vars, var_labels = Variables, loadings_df = ADI_2022_Loadings)
+ADI_Cor_CT &lt;- build_cor_df(dat = ADI_CT_Data,
+                           geo_label   = &quot;CT&quot;,
+                           na_target   = &quot;NA_ADI&quot;,
+                           re_target   = &quot;ReADI_CT_NR&quot;, 
+                           na_vars     = NA_Vars,
+                           re_vars     = Re_Vars, 
+                           var_labels  = Variables, 
+                           loadings_df = ADI_2022_Loadings)
 
-ADI_Cor_C &lt;- build_cor_df(dat        = ADI_C_Data, geo_label  = &quot;C&quot;, na_target  = &quot;NA_ADI&quot;, re_target  = &quot;ReADI_C_NR&quot;, na_vars    = NA_Vars, re_vars    = Re_Vars, var_labels = Variables, loadings_df = ADI_2022_Loadings)
+ADI_Cor_C &lt;- build_cor_df(dat = ADI_C_Data, 
+                          geo_label   = &quot;C&quot;, 
+                          na_target   = &quot;NA_ADI&quot;, 
+                          re_target   = &quot;ReADI_C_NR&quot;, 
+                          na_vars     = NA_Vars, 
+                          re_vars     = Re_Vars, 
+                          var_labels  = Variables, 
+                          loadings_df = ADI_2022_Loadings)
 
 # Combine and save --------------------------------------------------------------
 
@@ -4060,17 +4091,19 @@ regional designation</h3>
 <p><br></p>
 <p>To evaluate potential urban–rural bias in ReADI and NA-ADI, we assign
 an urban/rural flag to census tracts and block groups using the 2020
-Census Urban Area (UAC10) shapefile from the TIGER/Line database
-(downloaded directly from the U.S. Census Bureau). After harmonizing
-coordinate reference systems, each tract and block group polygon is
-intersected with the UAC10 polygons: any unit that overlaps a designated
-urban area is labeled Urban, and all others are labeled Rural.</p>
+Census Urban Area (UAC10) shapefile from the <a href="https://www2.census.gov/geo/tiger/TIGER2020/UAC/">TIGER/Line
+database (downloaded directly from the U.S. Census Bureau)</a>. After
+harmonizing coordinate reference systems, each tract and block group
+polygon is intersected with the UAC10 polygons: any unit that overlaps a
+designated urban area is labeled Urban, and all others are labeled
+Rural.</p>
 <p>We then attach state FIPS, state name, and Census region (Midwest,
 Northeast, South, West; including the District of Columbia in the South)
-using the tigris::fips_codes crosswalk. Geometry is dropped and these
-labels are merged into the analysis datasets (ADI_CBG_Data and
-ADI_CT_Data), so downstream models can use urban/rural and region
-without needing spatial objects.</p>
+using the <strong>fips_codes</strong> crosswalk object in the
+<strong>tigris</strong> package. Geometry is dropped and these labels
+are merged into the analysis datasets (ADI_CBG_Data and ADI_CT_Data), so
+downstream models can use urban/rural and region without needing spatial
+objects.</p>
 <p>We do not classify counties as urban or rural. Although ReADI is
 calculated at the county level for policy interpretation and linkage to
 county-level health data, counties typically contain a mix of urban and
@@ -4079,15 +4112,17 @@ urban–rural bias analyses are therefore conducted at the census tract
 level, with block groups used descriptively.</p>
 <p>Using this approach we identify:</p>
 <ul>
-<li>Census block groups (n = 240,165): 30,318 rural and 209,847 urban
+<li>Census block groups
 <ul>
+<li>N: 240,165 total (30,318 rural; 209,847 urban)</li>
 <li>Midwest: 55,119 total (9,662 rural; 45,457 urban)</li>
 <li>Northeast: 43,456 total (3,677 rural; 39,779 urban)</li>
 <li>South: 86,845 total (13,412 rural; 73,433 urban)</li>
 <li>West: 52,255 total (3,548 rural; 48,707 urban)</li>
 </ul></li>
-<li>Census tracts (n = 84,535): 8,410 rural and 76,125 urban
+<li>Census tracts
 <ul>
+<li>N: 84,535 total (8,410 rural; 76,125 urban)</li>
 <li>Midwest: 18,421 total (2,487 rural; 15,934 urban)</li>
 <li>Northeast: 14,551 total (994 rural; 13,557 urban)</li>
 <li>South: 31,995 total (3,878 rural; 28,117 urban)</li>
@@ -4103,8 +4138,6 @@ Code</button>
 <div id="code988" class="collapse">
 <pre class="r"><code>load(url(&quot;https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/ACS_CBG_2022_Geometry.RData&quot;))
 load(url(&quot;https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/ACS_CT_2022_Geometry.RData&quot;))
-#load(&quot;ADI_CBG_Data.RData&quot;)
-#load(&quot;ADI_CT_Data.RData&quot;)
 
 ## Download and read Census 2020 urban area shapefile --------------------------
 temp_dir &lt;- tempdir()
@@ -4198,11 +4231,15 @@ table(ACS_CT_2022_Geometry$urban_label)</code></pre>
 
 stopifnot(anyDuplicated(ACS_CBG_2022_Geometry$GEOID) == 0, anyDuplicated(ADI_CBG_Data$GEOID) == 0, anyDuplicated(ACS_CT_2022_Geometry$GEOID) == 0, anyDuplicated(ADI_CT_Data$GEOID) == 0)
 
-ACS_CBG_2022_Geometry &lt;- ACS_CBG_2022_Geometry %&gt;% st_drop_geometry() %&gt;% select(GEOID, STATEFP, state_name, urban_label, region)
+ACS_CBG_2022_Geometry &lt;- ACS_CBG_2022_Geometry %&gt;% 
+  st_drop_geometry() %&gt;% 
+  select(GEOID, STATEFP, state_name, urban_label, region)
 ADI_CBG_Data &lt;- plyr::join(ADI_CBG_Data, ACS_CBG_2022_Geometry, by   = &quot;GEOID&quot;, type = &quot;left&quot;)
 
-ACS_CT_2022_Geometry &lt;- ACS_CT_2022_Geometry %&gt;% st_drop_geometry() %&gt;% select(GEOID, STATEFP, state_name, urban_label, region)
-ADI_CT_Data &lt;- plyr::join(ADI_CT_Data, ACS_CT_2022_Geometry, by   = &quot;GEOID&quot;, type = &quot;left&quot;)
+ACS_CT_2022_Geometry &lt;- ACS_CT_2022_Geometry %&gt;% 
+  st_drop_geometry() %&gt;% 
+  select(GEOID, STATEFP, state_name, urban_label, region)
+ADI_CT_Data &lt;- plyr::join(ADI_CT_Data, ACS_CT_2022_Geometry, by = &quot;GEOID&quot;, type = &quot;left&quot;)
 
 ## Regional/urban summaries --------------------------------------------------------
 
