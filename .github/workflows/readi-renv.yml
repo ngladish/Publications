@@ -38,6 +38,23 @@ jobs:
           r-version: ${{ matrix.r-version }}
           use-public-rspm: true
 
+      # ----- OS-specific system libraries -----
+
+      - name: Install system dependencies (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libudunits2-dev libgdal-dev libgeos-dev libproj-dev
+
+      - name: Install system dependencies (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew install udunits gdal proj geos
+
+      # Windows usually has CRAN binaries for units/sf; no extra system deps here
+
+      # ----- R/renv steps -----
+
       - name: Install renv
         run: Rscript -e "install.packages('renv', repos = 'https://cloud.r-project.org')"
 
@@ -47,4 +64,4 @@ jobs:
 
       - name: Render ReADI analysis
         working-directory: Gladish_2025_ReADI_Creation
-        run: Rscript -e \"rmarkdown::render('Analysis.Rmd')\"
+        run: Rscript -e "rmarkdown::render('Analysis.Rmd')"
