@@ -18,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, windows-latest]
+        os: [macos-latest, windows-latest, ubuntu-latest]
         r-version: ["4.5.0"]
 
     env:
@@ -39,12 +39,12 @@ jobs:
           use-public-rspm: true
 
       - name: Install renv
-        run: R -q -e 'install.packages("renv", repos = "https://cloud.r-project.org")'
+        run: Rscript -e "install.packages('renv', repos = 'https://cloud.r-project.org')"
 
       - name: Restore renv library
         working-directory: Gladish_2025_ReADI_Creation
-        run: R -q -e 'renv::restore(prompt = FALSE)'
+        run: Rscript -e "renv::restore(prompt = FALSE)"
 
       - name: Render ReADI analysis
         working-directory: Gladish_2025_ReADI_Creation
-        run: R -q -e 'rmarkdown::render("Analysis.Rmd")'
+        run: Rscript -e \"rmarkdown::render('Analysis.Rmd')\"
