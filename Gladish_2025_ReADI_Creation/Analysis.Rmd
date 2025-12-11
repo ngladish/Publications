@@ -84,39 +84,7 @@ div.card {
   }
 ```
 
-```{r setup, include=FALSE}
-# Warn if R version is older than what was used for the analysis
-if (getRversion() < "4.4.1") {
-  warning(
-    "This analysis was developed under R 4.4.1. ",
-    "You are using R ", as.character(getRversion()),
-    ". If you see package errors, consider upgrading to R 4.4.1."
-  )
-}
 
-# Check for required packages and fail with a clear message if missing
-needed_pkgs <- c(
-  "sf", "s2", "tidyverse", "dplyr", "ggplot2",
-  "corrplot", "MBESS", "Metrics", "plyr", "tidyr", "tibble"
-  # add or remove package names here if needed
-)
-
-missing_pkgs <- needed_pkgs[!vapply(needed_pkgs, requireNamespace, logical(1), quietly = TRUE)]
-
-if (length(missing_pkgs) > 0) {
-  msg <- paste0(
-    "The following R packages are missing: ",
-    paste(missing_pkgs, collapse = ", "), ".\n\n",
-    "Please run renv::restore() in the project root\n",
-    "  (Gladish_2025_ReADI_Creation)\n",
-    "before knitting this document.\n\n",
-    "If renv::restore() fails with errors about 's2', 'cmake', or 'abseil',\n",
-    "see the 'R and system requirements' section of the README for the\n",
-    "one-time system commands to run on your operating system."
-  )
-  stop(msg, call. = FALSE)
-}
-```
 
 # Introduction
 ***
@@ -214,6 +182,7 @@ For the **2011–2015** mortality analyses we use NA-ADI at the tract level only
 > Census block group (official source)
 
 The code below:
+
 - Reads the official 2022 NA-ADI CBG file from GitHub (exported from the Neighborhood Atlas),
 - Ensures a 12-digit CBG GEOID, and
 - Recodes the suppressed categories as missing, resulting in 6,384 NA values and 235,952 CBGs remaining.
@@ -241,6 +210,7 @@ NA_ADI_CBG_2022 <- NA_ADI_CBG_2022[complete.cases(NA_ADI_CBG_2022$NA_ADI),]
 > Census tract (population-weighted from CBG)
 
 For tract-level NA-ADI scores in 2022, we:
+
 1. Use ACS 2022 B01003_001 to obtain CBG-level population counts,
 2. Within each tract, compute CBG-specific weights as the proportion of tract population residing in each CBG, and
 3. Compute the tract-level NA-ADI as the population-weighted mean of the CBG NA-ADI scores (NA_ADI).
@@ -360,6 +330,7 @@ For the mortality analyses, we use publicly available CDC mortality data through
 > Census Block Group (official source)
 
 We:
+
 - Download the official 2015 NA-ADI CBG file (v3.1) from the Neighborhood Atlas,
 - Convert suppression codes ("GQ", "GQ-PH", "PH", "QDI", "NONE") to NA, and
 - Save the cleaned CBG dataset as **NA_ADI_CBG_2015** for use in the tract-level aggregation below.
@@ -1226,19 +1197,19 @@ A <- paste("CBG N = ", nrow(ADI_CBG), "; CT N = ", nrow(ADI_CT), "; C N = ", nro
 
 # linear regression
 r2 <- summary(lm(ADI_CBG_Data$ReADI_CBG_NR ~ ADI_CBG_Data$NA_ADI))$r.squared
-ciu <- ci.R2(R2 = summary(lm(ReADI_CBG_NR ~ NA_ADI, data = ADI_CBG_Data))$r.squared, df.1 = 1, df.2 = nrow(ADI_CBG_Data) - 1 - 1, conf.level = 0.95)[[1]]
-cil <- ci.R2(R2 = summary(lm(ReADI_CBG_NR ~ NA_ADI, data = ADI_CBG_Data))$r.squared, df.1 = 1, df.2 = nrow(ADI_CBG_Data) - 1 - 1, conf.level = 0.95)[[3]]
-B <- paste("CBG lm(ReADI ~ NA-ADI) results: ", round(r2, 3), " (95% CI, ", round(ciu, 3), "-", round(cil, 3), ")", sep="")
+cil <- ci.R2(R2 = summary(lm(ReADI_CBG_NR ~ NA_ADI, data = ADI_CBG_Data))$r.squared, df.1 = 1, df.2 = nrow(ADI_CBG_Data) - 1 - 1, conf.level = 0.95)[[1]]
+ciu <- ci.R2(R2 = summary(lm(ReADI_CBG_NR ~ NA_ADI, data = ADI_CBG_Data))$r.squared, df.1 = 1, df.2 = nrow(ADI_CBG_Data) - 1 - 1, conf.level = 0.95)[[3]]
+B <- paste("CBG lm(ReADI ~ NA-ADI) results: ", round(r2, 3), " (95% CI, ", round(cil, 3), "-", round(ciu, 3), ")", sep="")
 
 r2 <- summary(lm(ADI_CT_Data$ReADI_CT_NR ~ ADI_CT_Data$NA_ADI))$r.squared
-ciu <- ci.R2(R2 = summary(lm(ReADI_CT_NR ~ NA_ADI, data = ADI_CT_Data))$r.squared, df.1 = 1, df.2 = nrow(ADI_CT_Data) - 1 - 1, conf.level = 0.95)[[1]]
-cil <- ci.R2(R2 = summary(lm(ReADI_CT_NR ~ NA_ADI, data = ADI_CT_Data))$r.squared, df.1 = 1, df.2 = nrow(ADI_CT_Data) - 1 - 1, conf.level = 0.95)[[3]]
-C <- paste("CT lm(ReADI ~ NA-ADI) results: ", round(r2, 3), " (95% CI, ", round(ciu, 3), "-", round(cil, 3), ")", sep="")
+cil <- ci.R2(R2 = summary(lm(ReADI_CT_NR ~ NA_ADI, data = ADI_CT_Data))$r.squared, df.1 = 1, df.2 = nrow(ADI_CT_Data) - 1 - 1, conf.level = 0.95)[[1]]
+ciu <- ci.R2(R2 = summary(lm(ReADI_CT_NR ~ NA_ADI, data = ADI_CT_Data))$r.squared, df.1 = 1, df.2 = nrow(ADI_CT_Data) - 1 - 1, conf.level = 0.95)[[3]]
+C <- paste("CT lm(ReADI ~ NA-ADI) results: ", round(r2, 3), " (95% CI, ", round(cil, 3), "-", round(ciu, 3), ")", sep="")
 
 r2 <- summary(lm(ADI_C_Data$ReADI_C_NR ~ ADI_C_Data$NA_ADI))$r.squared
-ciu <- ci.R2(R2 = summary(lm(ReADI_C_NR ~ NA_ADI, data = ADI_C_Data))$r.squared, df.1 = 1, df.2 = nrow(ADI_C_Data) - 1 - 1, conf.level = 0.95)[[1]]
-cil <- ci.R2(R2 = summary(lm(ReADI_C_NR ~ NA_ADI, data = ADI_C_Data))$r.squared, df.1 = 1, df.2 = nrow(ADI_C_Data) - 1 - 1, conf.level = 0.95)[[3]]
-D <- paste("C lm(ReADI ~ NA-ADI) results: ", round(r2, 3), " (95% CI, ", round(ciu, 3), "-", round(cil, 3), ")", sep="")
+cil <- ci.R2(R2 = summary(lm(ReADI_C_NR ~ NA_ADI, data = ADI_C_Data))$r.squared, df.1 = 1, df.2 = nrow(ADI_C_Data) - 1 - 1, conf.level = 0.95)[[1]]
+ciu <- ci.R2(R2 = summary(lm(ReADI_C_NR ~ NA_ADI, data = ADI_C_Data))$r.squared, df.1 = 1, df.2 = nrow(ADI_C_Data) - 1 - 1, conf.level = 0.95)[[3]]
+D <- paste("C lm(ReADI ~ NA-ADI) results: ", round(r2, 3), " (95% CI, ", round(cil, 3), "-", round(ciu, 3), ")", sep="")
 
 # rmse
 ADI_CBG_Data <- ADI_CBG_Data[!is.na(ADI_CBG_Data$NA_ADI),]
@@ -1488,16 +1459,19 @@ A <- paste("Range of lm(cor(ReADI ~ Components) ~ Loadings): R^2 ≥ ", round(r2
 rmse_stat <- function(data, indices) {
   d <- data[indices, ]
   Metrics::rmse(d$ReADI_Cor, d$ReADI_Loadings)}
+
 sub <- ADI_Cor_L[ADI_Cor_L$Geo == "CBG", ]
 rmse_cbg <- Metrics::rmse(sub$ReADI_Cor, sub$ReADI_Loadings)
 set.seed(2374)
 b <- boot(sub, statistic = rmse_stat, R = 2000)
 ci_cbg <- boot.ci(b, type = c("perc"))$percent
+
 sub <- ADI_Cor_L[ADI_Cor_L$Geo == "CT", ]
 rmse_ct <- Metrics::rmse(sub$ReADI_Cor, sub$ReADI_Loadings)
 set.seed(2374)
 b <- boot(sub, statistic = rmse_stat, R = 2000)
 ci_ct <- boot.ci(b, type = c("perc"))$percent
+
 sub <- ADI_Cor_L[ADI_Cor_L$Geo == "C", ]
 rmse_c <- Metrics::rmse(sub$ReADI_Cor, sub$ReADI_Loadings)
 set.seed(2374)
@@ -1523,10 +1497,13 @@ G <- paste("Figure 2A (ReADI C): R^2 = ", round(r2_c,3), " (RMSE, ", round(rmse_
 #### Linear regression
 r2_cbg <- summary(lm(NA_Cor ~ NA_ADI_Loadings, data = ADI_Cor_L[ADI_Cor_L$Geo == "CBG", ]))$r.squared
 ci_cbg <- ci.R2(R2 = r2_cbg, df.1 = 1, df.2 = nrow(ADI_Cor_L[ADI_Cor_L$Geo == "CBG", ]) - 1 - 1, conf.level = 0.95)
+
 r2_ct <- summary(lm(NA_Cor ~ NA_ADI_Loadings, data = ADI_Cor_L[ADI_Cor_L$Geo == "CT", ]))$r.squared
 ci_ct <- ci.R2(R2 = r2_ct, df.1 = 1, df.2 = nrow(ADI_Cor_L[ADI_Cor_L$Geo == "CT", ]) - 1 - 1, conf.level = 0.95)
+
 r2_c <- summary(lm(NA_Cor ~ NA_ADI_Loadings, data = ADI_Cor_L[ADI_Cor_L$Geo == "C", ]))$r.squared
 ci_c <- ci.R2(R2 = r2_c, df.1 = 1, df.2 = nrow(ADI_Cor_L[ADI_Cor_L$Geo == "C", ]) - 1 - 1, conf.level = 0.95)
+
 r2 <- min(r2_cbg, r2_ct, r2_c)
 cil <- min(ci_cbg[[1]], ci_ct[[1]], ci_c[[1]])
 ciu <- min(ci_cbg[[3]], ci_ct[[3]], ci_c[[3]])
@@ -1602,6 +1579,7 @@ L
 These panels show, for each ADI component and geography, the correlation of that component with the ADI score alongside its factor loading, to visually assess how well the weighting scheme aligns with how strongly each indicator relates to the score.
 
 Using the long-format ADI_Cor_L object, we:
+
 - select, for each geography (block group, census tract, county), the indicator name (Variables), geography (Geography), and either  
   - ReADI correlations and loadings (ReADI_Cor, ReADI_Loadings) for Figure 2A, or  
   - NA-ADI correlations and loadings (NA_Cor, NA_ADI_Loadings) for Figure 2B;
@@ -1859,6 +1837,7 @@ Figure notes: Results are ordered based on the first principal component.
 Here we summarize how much NA-ADI and ReADI differ numerically at each geographic level. In ADI_CBG_Data, ADI_CT_Data, and ADI_C_Data, the variable Diff_NA_ReADI gives the difference between NA-ADI and ReADI for each unit (on the 0–100 ADI scale).
 
 For each geography (block group, tract, county), we:
+
 - compute the range (minimum to maximum) and standard deviation of Diff_NA_ReADI among non-missing observations, and print these as “min to max (SD, sd_value)” to describe how far the indices can diverge; and  
 - count how many units have an absolute difference of at least 20 points (Diff_NA_ReADI <= -20 or >= 20), and report this as “X of N units (Y%)”, corresponding to the “discrepancies of 20 points or greater” statistics in the Results.
 
@@ -1890,15 +1869,15 @@ C <- paste("Differences in ADIs (C): ", round(range[1], 1), " to ", round(range[
 ## Amount different by 20 points by geo
 ADI_CBG_Data <- ADI_CBG_Data[!is.na(ADI_CBG_Data$Diff_NA_ReADI),]
 disc_20 <- sum(ADI_CBG_Data$Diff_NA_ReADI <= -20 | ADI_CBG_Data$Diff_NA_ReADI >= 20, na.rm = T) 
-D <- paste("Amount of CBGs different by > abs|20|: ", round(disc_20, 1), " of ", round(nrow(ADI_CBG_Data), 1), " (", round(100*(disc_20/nrow(ADI_CBG_Data)),1), "%)", sep = "")
+D <- paste("Amount of CBGs with |difference| >= 20: ", round(disc_20, 1), " of ", round(nrow(ADI_CBG_Data), 1), " (", round(100*(disc_20/nrow(ADI_CBG_Data)),1), "%)", sep = "")
 
 ADI_CT_Data <- ADI_CT_Data[!is.na(ADI_CT_Data$Diff_NA_ReADI),]
 disc_20 <- sum(ADI_CT_Data$Diff_NA_ReADI <= -20 | ADI_CT_Data$Diff_NA_ReADI >= 20, na.rm = T) 
-E <- paste("Amount of CTs different by > abs|20|: ", round(disc_20, 1), " of ", round(nrow(ADI_CT_Data), 1), " (", round(100*(disc_20/nrow(ADI_CT_Data)),1), "%)", sep = "")
+E <- paste("Amount of CTs with |difference| >= 20: ", round(disc_20, 1), " of ", round(nrow(ADI_CT_Data), 1), " (", round(100*(disc_20/nrow(ADI_CT_Data)),1), "%)", sep = "")
 
 ADI_C_Data <- ADI_C_Data[!is.na(ADI_C_Data$Diff_NA_ReADI),]
 disc_20 <- sum(ADI_C_Data$Diff_NA_ReADI <= -20 | ADI_C_Data$Diff_NA_ReADI >= 20, na.rm = T) 
-G <- paste("Amount of Cs different by > abs|20|: ", round(disc_20, 1), " of ", round(nrow(ADI_C_Data), 1), " (", round(100*(disc_20/nrow(ADI_C_Data)),1), "%)", sep = "")
+G <- paste("Amount of Cs with |difference| >= 20: ", round(disc_20, 1), " of ", round(nrow(ADI_C_Data), 1), " (", round(100*(disc_20/nrow(ADI_C_Data)),1), "%)", sep = "")
 ```
   </div>
 </div>
@@ -2242,7 +2221,7 @@ ggplot(CT_region_summary, aes(x = reorder(state_name, mean_diff), y = mean_diff,
 
 <br>
 
->eFigure 2. Mean difference between the Neighborhood Atlas (NA-ADI) and Reproducible Area Deprivation Index (ReADI) by state, regions, and area type. A. CBG.
+>eFigure 2A - CBG. Mean difference between the Neighborhood Atlas (NA-ADI) and Reproducible Area Deprivation Index (ReADI) by state, regions, and area type.
 
 ```{r, echo = F, fig.width=10, fig.height=8}
 ggplot(CBG_region_summary, aes(x = reorder(state_name, mean_diff), y = mean_diff, fill = urban_label)) +
@@ -2257,7 +2236,7 @@ ggplot(CBG_region_summary, aes(x = reorder(state_name, mean_diff), y = mean_diff
 
 <br>
 
->eFigure 2. Mean difference between the Neighborhood Atlas (NA-ADI) and Reproducible Area Deprivation Index (ReADI) by state, regions, and area type. B. CT.
+>eFigure 2B - CT. Mean difference between the Neighborhood Atlas (NA-ADI) and Reproducible Area Deprivation Index (ReADI) by state, regions, and area type.
 
 ```{r, echo = F, fig.width=10, fig.height=8}
 ggplot(CT_region_summary, aes(x = reorder(state_name, mean_diff), y = mean_diff, fill = urban_label)) +
