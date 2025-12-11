@@ -86,11 +86,11 @@ div.card {
 
 ```{r setup, include=FALSE}
 # Warn if R version is older than what was used for the analysis
-if (getRversion() < "4.4.1") {
+if (getRversion() < "4.5.0") {
   warning(
-    "This analysis was developed under R 4.4.1. ",
+    "This analysis was developed under R 4.5.0. ",
     "You are using R ", as.character(getRversion()),
-    ". If you see package errors, consider upgrading to R 4.4.1."
+    ". If you see package errors, consider upgrading to R 4.5.0."
   )
 }
 
@@ -251,8 +251,6 @@ This results in 83,722 census tracts with tract-level NA-ADI scores.
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code251">Show Code</button>
   <div id="code251" class="collapse">
 ```{r}
-#load("NA_ADI_CBG_2022.RData")
-
 #Basic sanity checks on NA_ADI_CBG_2022
 stopifnot(all(c("GEOID", "NA_ADI") %in% names(NA_ADI_CBG_2022)),
   is.character(NA_ADI_CBG_2022$GEOID),
