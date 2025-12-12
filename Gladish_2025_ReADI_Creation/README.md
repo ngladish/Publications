@@ -27,7 +27,7 @@ All data used here are **publicly available** from external sources.
 ### 1.1 R and system requirements
 
 -   This analysis was developed and tested under **R 4.4.1**.
--   Please use R 4.4.1 (or another R 4.4.x release) if possible.
+-   Please use R 4.5.0 (or another R 4.4.x release) if possible.
 
 This project uses spatial packages (`sf`, `s2`) that sometimes need extra system tools on a fresh machine. If `renv::restore()` fails with errors about compiling `s2`, `cmake`, or `abseil`:
 

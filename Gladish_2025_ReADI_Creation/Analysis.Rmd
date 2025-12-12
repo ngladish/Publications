@@ -94,6 +94,23 @@ if (getRversion() < "4.5.0") {
   )
 }
 
+# Explicitly load user- and project-level .Renviron files if they exist
+for (p in c("~/.Renviron", ".Renviron")) {
+  p_full <- path.expand(p)
+  if (file.exists(p_full)) {
+    readRenviron(p_full)
+  }
+}
+
+# Hard requirement: Census API key must be present
+if (!nzchar(Sys.getenv("CENSUS_API_KEY"))) {
+  stop(
+    "Census API key not found.\n",
+    "Please set the CENSUS_API_KEY environment variable ",
+    "(e.g. in ~/.Renviron or a project .Renviron) before running this document.\n"
+  )
+}
+
 # Check for required packages and fail with a clear message if missing
 needed_pkgs <- c(
   "sf", "s2", "tidyverse", "dplyr", "ggplot2",
@@ -101,7 +118,9 @@ needed_pkgs <- c(
   # add or remove package names here if needed
 )
 
-missing_pkgs <- needed_pkgs[!vapply(needed_pkgs, requireNamespace, logical(1), quietly = TRUE)]
+missing_pkgs <- needed_pkgs[!vapply(
+  needed_pkgs, requireNamespace, logical(1), quietly = TRUE
+)]
 
 if (length(missing_pkgs) > 0) {
   msg <- paste0(
@@ -255,7 +274,7 @@ This results in 83,722 census tracts with tract-level NA-ADI scores.
 stopifnot(all(c("GEOID", "NA_ADI") %in% names(NA_ADI_CBG_2022)),
   is.character(NA_ADI_CBG_2022$GEOID),
   is.numeric(NA_ADI_CBG_2022$NA_ADI) || is.logical(NA_ADI_CBG_2022$NA_ADI))
-# Check Census API key
+
 if (!nzchar(Sys.getenv("CENSUS_API_KEY"))) {
   stop(
     "Census API key not found.\n",
