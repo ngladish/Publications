@@ -82,7 +82,7 @@ with this code and publicly available datasets.
     Otherwise (or for local use):
     -   Download or open `Gladish_2025_ReADI_Creation/Analysis.html` in a web browser.
 <br>
--   **Reproducibility / environment:**\
+-   **Reproducibility and environment:**
 
     The subdirectory uses [`renv`](https://rstudio.github.io/renv/) to
     freeze the R package environment (developed under **R 4.4.1**). See
