@@ -241,7 +241,7 @@ The code below:
   <div id="code222" class="collapse">
 ```{r}
 NA_ADI_CBG_2022 <- read.csv("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/NA_ADI/2018-2022/US_2022_ADI_Census_Block_Group_v4_0_1.csv", colClasses = c(FIPS = "character"), stringsAsFactors = FALSE)
-# Sanity checks: FIPS is already a 12-digit unique ID per row
+
 stopifnot(all(nchar(NA_ADI_CBG_2022$FIPS) == 12), 
 length(unique(NA_ADI_CBG_2022$FIPS)) == nrow(NA_ADI_CBG_2022))
 NA_ADI_CBG_2022$GEOID <- NA_ADI_CBG_2022$FIPS
@@ -249,7 +249,6 @@ NA_ADI_CBG_2022$ADI_NATRANK[NA_ADI_CBG_2022$ADI_NATRANK %in% c("GQ", "GQ-PH", "P
 NA_ADI_CBG_2022$ADI_NATRANK <- as.numeric(NA_ADI_CBG_2022$ADI_NATRANK)
 names(NA_ADI_CBG_2022)[names(NA_ADI_CBG_2022) == "ADI_NATRANK"] <- "NA_ADI"
 NA_ADI_CBG_2022 <- NA_ADI_CBG_2022[complete.cases(NA_ADI_CBG_2022$NA_ADI),]
-#save(NA_ADI_CBG_2022, file = "NA_ADI_CBG_2022.RData")
 ```
   </div>
 </div>
@@ -270,7 +269,6 @@ This results in 83,722 census tracts with tract-level NA-ADI scores.
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code251">Show Code</button>
   <div id="code251" class="collapse">
 ```{r}
-#Basic sanity checks on NA_ADI_CBG_2022
 stopifnot(all(c("GEOID", "NA_ADI") %in% names(NA_ADI_CBG_2022)),
   is.character(NA_ADI_CBG_2022$GEOID),
   is.numeric(NA_ADI_CBG_2022$NA_ADI) || is.logical(NA_ADI_CBG_2022$NA_ADI))
@@ -297,9 +295,7 @@ ACS_2022_PopSize_CBG$GEOID_C <- substr(ACS_2022_PopSize_CBG$GEOID, 1, 5)
 ACS_2022_PopSize_CBG <- ACS_2022_PopSize_CBG[ACS_2022_PopSize_CBG$GEOID %in% NA_ADI_CBG_2022$GEOID,]
 sum(is.na(NA_ADI_CBG_2022$NA_ADI))
 stopifnot(identical(NA_ADI_CBG_2022$GEOID, ACS_2022_PopSize_CBG$GEOID))
-#save(ACS_2022_PopSize_CBG, file = "ACS_2022_PopSize_CBG.RData")
 
-# Sanity: every NA-ADI CBG should have a population row
 stopifnot(all(NA_ADI_CBG_2022$GEOID %in% ACS_2022_PopSize_CBG$GEOID))
 
 PopSize_CT <- tapply(ACS_2022_PopSize_CBG$B01003_001, ACS_2022_PopSize_CBG$GEOID_CT, sum, na.rm = TRUE)
@@ -314,7 +310,6 @@ NA_ADI_CT_2022_vec <- tapply(seq_len(nrow(NA_ADI_CBG_2022)), ACS_2022_PopSize_CB
     weighted.mean(x = NA_ADI_CBG_2022$NA_ADI[idx], w = CT_weight[idx], na.rm = TRUE)})
 NA_ADI_CT_2022 <- data.frame(GEOID  = names(NA_ADI_CT_2022_vec), NA_ADI = round(as.numeric(NA_ADI_CT_2022_vec)), row.names = NULL)
 if (any(is.na(NA_ADI_CT_2022$NA_ADI))) {warning("Some tract-level NA-ADI values are NA after aggregation.")}
-#save(NA_ADI_CT_2022, file = "NA_ADI_CT_2022.RData")
 ```
   </div>
 </div>
@@ -331,9 +326,6 @@ There were a total of 3,214 counties resulting from this.
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code315">Show Code</button>
   <div id="code315" class="collapse">
 ```{r}
-#load("NA_ADI_CBG_2022.RData")
-#load("ACS_2022_PopSize_CBG.RData")
-
 PopSize_C <- tapply(ACS_2022_PopSize_CBG$B01003_001, ACS_2022_PopSize_CBG$GEOID_C, sum, na.rm = TRUE)
 stopifnot(identical(names(PopSize_C), unique(ACS_2022_PopSize_CBG$GEOID_C)))
 PopSize_C <- data.frame(GEOID_C = names(PopSize_C), PopSize_C = as.numeric(PopSize_C), row.names  = NULL)
@@ -346,7 +338,7 @@ if (any(abs(w_sums - 1) > 1e-6)) {
 }
 sub_weights <- ACS_2022_PopSize_CBG[, c("GEOID", "GEOID_C", "C_weight")]
 NA_ADI_CBG_2022 <- plyr::join(NA_ADI_CBG_2022, sub_weights, by = "GEOID")
-# Sanity: every NA-ADI row should now have a county and weight
+
 stopifnot(!any(is.na(NA_ADI_CBG_2022$GEOID_C)),
   !any(is.na(NA_ADI_CBG_2022$C_weight)))
 
@@ -358,7 +350,6 @@ NA_ADI_C_2022$NA_ADI <- round(NA_ADI_C_2022$NA_ADI, digits = 0)
 if (any(is.na(NA_ADI_C_2022$NA_ADI))) {
   warning("Some county-level NA-ADI values are NA after aggregation.")
 }
-#save(NA_ADI_C_2022, file = "NA_ADI_C_2022.RData")
 ```
   </div>
 </div>
@@ -389,7 +380,6 @@ There were 5,323 CBGs with NAs leaving 215,010 CBGs for analysis.
   <div id="code371" class="collapse">
 ```{r}
 NA_ADI_CBG_2015 <- read.table("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/NA_ADI/2011-2015/US_2015_ADI_Census_Block_Group_v3.1.txt", sep = ",", header = T, row.names = 1, colClasses = c(FIPS = "character"), stringsAsFactors = FALSE)
-# Sanity checks: FIPS is already a 12-digit unique ID per row
 stopifnot(all(nchar(NA_ADI_CBG_2015$FIPS) == 12), 
 length(unique(NA_ADI_CBG_2015$FIPS)) == nrow(NA_ADI_CBG_2015))
 NA_ADI_CBG_2015$GEOID <- NA_ADI_CBG_2015$FIPS
@@ -397,7 +387,6 @@ NA_ADI_CBG_2015$ADI_NATRANK[NA_ADI_CBG_2015$ADI_NATRANK %in% c("GQ", "GQ-PH", "P
 NA_ADI_CBG_2015$ADI_NATRANK <- as.numeric(NA_ADI_CBG_2015$ADI_NATRANK)
 names(NA_ADI_CBG_2015)[names(NA_ADI_CBG_2015) == "ADI_NATRANK"] <- "NA_ADI"
 NA_ADI_CBG_2015 <- NA_ADI_CBG_2015[complete.cases(NA_ADI_CBG_2015$NA_ADI),]
-#save(NA_ADI_CBG_2015, file = "NA_ADI_CBG_2015.RData")
 ```
   </div>
 </div>
@@ -418,8 +407,6 @@ These tract-level 2015 NA-ADI scores are then merged to the CDC mortality data f
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code401">Show Code</button>
   <div id="code401" class="collapse">
 ```{r}
-
-#Basic sanity checks on NA_ADI_CBG_2022
 stopifnot(all(c("GEOID", "NA_ADI") %in% names(NA_ADI_CBG_2015)),
   is.character(NA_ADI_CBG_2015$GEOID),
   is.numeric(NA_ADI_CBG_2015$NA_ADI) || is.logical(NA_ADI_CBG_2015$NA_ADI))
@@ -437,9 +424,7 @@ ACS_2015_PopSize_CBG <- reshape2::dcast(ACS_2015_PopSize_CBG, GEOID + NAME ~ var
 ACS_2015_PopSize_CBG$GEOID_CT <- substr(ACS_2015_PopSize_CBG$GEOID, 1, 11)
 ACS_2015_PopSize_CBG$GEOID_C <- substr(ACS_2015_PopSize_CBG$GEOID, 1, 5)
 ACS_2015_PopSize_CBG <- ACS_2015_PopSize_CBG[ACS_2015_PopSize_CBG$GEOID %in% NA_ADI_CBG_2015$GEOID,]
-#save(ACS_2015_PopSize_CBG, file = "ACS_2015_PopSize_CBG.RData")
 
-# Sanity: every NA-ADI CBG should have a population row
 stopifnot(all(NA_ADI_CBG_2015$GEOID %in% ACS_2015_PopSize_CBG$GEOID))
 
 PopSize_CT <- tapply(ACS_2015_PopSize_CBG$B01003_001, ACS_2015_PopSize_CBG$GEOID_CT, sum, na.rm = TRUE)
@@ -454,7 +439,7 @@ if (any(abs(w_sums - 1) > 1e-6)) {
 }
 sub_weights <- ACS_2015_PopSize_CBG[, c("GEOID", "GEOID_CT", "CT_weight")]
 NA_ADI_CBG_2015 <- plyr::join(NA_ADI_CBG_2015, sub_weights, by = "GEOID")
-# Sanity: every NA-ADI row should now have a tract and weight
+
 stopifnot(!any(is.na(NA_ADI_CBG_2015$GEOID_CT)),
   !any(is.na(NA_ADI_CBG_2015$CT_weight)))
 
@@ -462,12 +447,10 @@ NA_ADI_CT_2015_vec <- tapply(1:nrow(NA_ADI_CBG_2015), NA_ADI_CBG_2015$GEOID_CT, 
   weighted.mean(x = NA_ADI_CBG_2015$NA_ADI[idx], w = NA_ADI_CBG_2015$CT_weight[idx], na.rm = TRUE)})
 NA_ADI_CT_2015 <- data.frame(GEOID = names(NA_ADI_CT_2015_vec), NA_ADI = as.numeric(NA_ADI_CT_2015_vec),  row.names = NULL)
 NA_ADI_CT_2015$NA_ADI <- round(NA_ADI_CT_2015$NA_ADI, digits = 0)
-# Quick sanity: no all-NA tracts created by aggregation
+
 if (any(is.na(NA_ADI_CT_2015$NA_ADI))) {
   warning("Some tract-level NA-ADI values are NA after aggregation.")
 }
-#save(NA_ADI_CT_2015, file = "NA_ADI_CT_2015.RData")
-
 ```
   </div>
 </div>
@@ -620,7 +603,6 @@ Tracts with missing or suppressed USALEEP estimates are excluded from all mortal
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code603">Show Code</button>
   <div id="code603" class="collapse">
 ```{r}
-load(url("https://raw.githubusercontent.com/ngladish/ReADI/main/2011-2015/ReADI_CT_2015.RData"))
 ADI_Mortality_Data <- read.csv("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/USALEEP_Mortality/US_A.csv", colClasses = c(Tract.ID = "character"), stringsAsFactors = FALSE)
 ADI_Mortality_Data$GEOID <- ADI_Mortality_Data$Tract.ID
 stopifnot(all(nchar(ADI_Mortality_Data$GEOID) == 11),
@@ -652,7 +634,6 @@ Pop_Total_2015 <- do.call(rbind, lapply(states, function(st){
 Pop_Total_2015 <- Pop_Total_2015 %>% tidyr::separate(NAME, c("Tract", "County", "State"), sep = ",")
 names(Pop_Total_2015)[names(Pop_Total_2015) == "estimate"] <- "Pop_Total_2015"
 Pop_Total_2015$variable <- NULL
-#save(Pop_Total_2015, file = "Pop_Total_2015.RData")
 ```
   </div>
 </div>
@@ -682,7 +663,7 @@ To benchmark against the original ADI, we also attach Singh (2003)’s published
 ```{r}
 load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/Data/ReADI_2022_Wt.RData"))
 
-## 1. Defining the NA-ADI/Singh factor score coefficients
+## Defining the NA-ADI/Singh factor score coefficients
 na_adi_weights <- c(
   MEDFI     = -0.0977,  # Median family income
   INCDIS    =  0.0936,  # Income disparity
@@ -707,7 +688,6 @@ na_adi_df <- data.frame(Vars = names(na_adi_weights), NA_ADI = as.numeric(na_adi
 ADI_2022_Wt <- merge(ReADI_2022_Wt, na_adi_df, by = "Vars", all.x = TRUE, sort = FALSE)
 setdiff(na_adi_df$Vars, ADI_2022_Wt$Vars)   # should be character(0)
 setdiff(ADI_2022_Wt$Vars, na_adi_df$Vars)   # anything here just won't get NA_ADI
-#save(ADI_2022_Wt, file = "ADI_2022_Wt.RData")
 ```
   </div>
 </div>
@@ -734,7 +714,7 @@ We store the Singh tract loadings alongside the ReADI weights in ReADI_2022_Wt, 
 ```{r, eval}
 load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/Data/ReADI_2022_Loadings.RData"))
 
-## 1. Defining the NA-ADI/Singh factor score coefficients
+## Defining the NA-ADI/Singh factor score loadings
 na_adi_loadings <- c(
   MEDFI     = -0.8629,  # Median family income
   INCDIS    =  0.8262,  # Income disparity
@@ -757,9 +737,8 @@ na_adi_loadings <- c(
 
 na_adi_df <- data.frame(Vars = names(na_adi_loadings), NA_ADI = as.numeric(na_adi_loadings), row.names = NULL)
 ADI_2022_Loadings <- merge(ReADI_2022_Loadings, na_adi_df, by = "Vars", all.x = TRUE, sort = FALSE)
-setdiff(na_adi_df$Vars, ADI_2022_Loadings$Vars)   # should be character(0)
-setdiff(ADI_2022_Loadings$Vars, na_adi_df$Vars)   # anything here just won't get NA_ADI
-#save(ADI_2022_Loadings, file = "ADI_2022_Loadings.RData")
+setdiff(na_adi_df$Vars, ADI_2022_Loadings$Vars)   
+setdiff(ADI_2022_Loadings$Vars, na_adi_df$Vars)   
 ```
   </div>
 </div>
@@ -792,9 +771,7 @@ In all analyses:
 vars   <- c("MEDFI", "INCDIS", "BELPL", "PL150", "EDU9YR", "HSDPNHIGH", "EMPWC", "UNEMP", "MEDHV", "MEDRNT", "MEDMORT", "OWN", "SNGPNT", "NOVEH", "NOINT", "NOPLUM", "CROWD")
 
 # CBG --------------------------------------------------------------------
-load(url("https://raw.githubusercontent.com/ngladish/ReADI/main/2018-2022/ReADI_CBG_2022.RData"))
 load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/RENA/RENA_ADI_2022_CBG_RawVars.RData"))
-
 NA_ADI_CBG_2022 <- NA_ADI_CBG_2022[, c("GEOID", "NA_ADI")]
 ADI_CBG_Data <- plyr::join(ReADI_CBG_2022, NA_ADI_CBG_2022, by = "GEOID", type = "left")
 stopifnot(!anyDuplicated(ADI_CBG_Data$GEOID))
@@ -805,10 +782,8 @@ RENA_ADI_2022_CBG_RawVars <- RENA_ADI_2022_CBG_RawVars[, c("GEOID", vars)]
 colnames(RENA_ADI_2022_CBG_RawVars) <- c("GEOID", paste0(vars, "_NA"))
 ADI_CBG_Data <- plyr::join(ADI_CBG_Data, RENA_ADI_2022_CBG_RawVars, by = "GEOID", type = "left")
 stopifnot(!anyDuplicated(ADI_CBG_Data$GEOID))
-#save(ADI_CBG_Data, file = "ADI_CBG_Data.RData")
 
 # CT --------------------------------------------------------------------
-load(url("https://raw.githubusercontent.com/ngladish/ReADI/main/2018-2022/ReADI_CT_2022.RData"))
 load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/RENA/RENA_ADI_2022_CT_RawVars.RData"))
 NA_ADI_CT_2022 <- NA_ADI_CT_2022[, c("GEOID", "NA_ADI")]
 ADI_CT_Data <- plyr::join(ReADI_CT_2022, NA_ADI_CT_2022, by = "GEOID", type = "left")
@@ -819,10 +794,8 @@ RENA_ADI_2022_CT_RawVars <- RENA_ADI_2022_CT_RawVars[, c("GEOID", vars)]
 colnames(RENA_ADI_2022_CT_RawVars) <- c("GEOID", paste0(vars, "_NA"))
 ADI_CT_Data <- plyr::join(ADI_CT_Data, RENA_ADI_2022_CT_RawVars, by = "GEOID", type = "left")
 stopifnot(!anyDuplicated(ADI_CT_Data$GEOID))
-#save(ADI_CT_Data, file = "ADI_CT_Data.RData")
 
 # C --------------------------------------------------------------------
-load(url("https://raw.githubusercontent.com/ngladish/ReADI/main/2018-2022/ReADI_C_2022.RData"))
 load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/RENA/RENA_ADI_2022_C_RawVars.RData"))
 NA_ADI_C_2022 <- NA_ADI_C_2022[, c("GEOID", "NA_ADI")]
 ADI_C_Data <- plyr::join(ReADI_C_2022, NA_ADI_C_2022, by = "GEOID", type = "left")
@@ -833,7 +806,6 @@ RENA_ADI_2022_C_RawVars <- RENA_ADI_2022_C_RawVars[, c("GEOID", vars)]
 colnames(RENA_ADI_2022_C_RawVars) <- c("GEOID", paste0(vars, "_NA"))
 ADI_C_Data <- plyr::join(ADI_C_Data, RENA_ADI_2022_C_RawVars, by = "GEOID", type = "left")
 stopifnot(!anyDuplicated(ADI_C_Data$GEOID))
-#save(ADI_C_Data, file = "ADI_C_Data.RData")
 ```
   </div>
 </div>
@@ -863,9 +835,6 @@ These difference scores are added to the CBG-, CT-, and county-level ADI dataset
 ADI_CBG_Data$Diff_NA_ReADI <- ADI_CBG_Data$NA_ADI - ADI_CBG_Data$ReADI_CBG_NR
 ADI_CT_Data$Diff_NA_ReADI <- ADI_CT_Data$NA_ADI - ADI_CT_Data$ReADI_CT_NR
 ADI_C_Data$Diff_NA_ReADI <- ADI_C_Data$NA_ADI - ADI_C_Data$ReADI_C_NR
-#save(ADI_CBG_Data, file = "ADI_CBG_Data.RData")
-#save(ADI_CT_Data, file = "ADI_CT_Data.RData")
-#save(ADI_C_Data, file = "ADI_C_Data.RData")
 ```
   </div>
 </div>
@@ -890,10 +859,6 @@ We then apply this function separately to the block group, census tract, and cou
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code873">Show Code</button>
   <div id="code873" class="collapse">
 ```{r}
-#load("ADI_CBG_Data.RData")
-#load("ADI_CT_Data.RData")
-#load("ADI_C_Data.RData")
-
 vars <- c("Diff_NA_ReADI", "MEDFI_Re", "INCDIS_Re", "BELPL_Re", "PL150_Re", "EDU9YR_Re", "HSDPNHIGH_Re", "EMPWC_Re", "UNEMP_Re", "MEDHV_Re", "MEDRNT_Re", "MEDMORT_Re", "OWN_Re", "SNGPNT_Re", "NOVEH_Re", "NOINT_Re", "NOPLUM_Re", "CROWD_Re")
 var_names <- c("Median Family Income", "Income Disparity", "Below Poverty 100%", "Below Poverty 150%", "Low Education", "High Education", "White Collar Employment", "Unemployment", "Median Home Value", "Median Rent", "Median Mortgage", "Home Ownership", "Single Parent", "No Vehicle", "No Internet", "No Plumbing", "Crowded Housing")
 
@@ -924,8 +889,6 @@ ADI_Diff_Cor <- ADI_Diff_Cor %>%
   arrange(desc(Cor), .by_group = TRUE) %>%
   mutate(Ord = row_number()) %>%
   ungroup()
-
-#save(ADI_Diff_Cor, file = "ADI_Diff_Cor.RData")
 ```
   </div>
 </div>
@@ -955,11 +918,6 @@ Concretely:
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code938">Show Code</button>
   <div id="code938" class="collapse">
 ```{r}
-#load("ADI_CBG_Data.RData")
-#load("ADI_CT_Data.RData")
-#load("ADI_C_Data.RData")
-#load("ADI_2022_Loadings.RData")
-
 NA_Vars <- c("MEDFI_NA", "INCDIS_NA", "BELPL_NA", "PL150_NA", "EDU9YR_NA", "HSDPNHIGH_NA", "EMPWC_NA", "UNEMP_NA", "MEDHV_NA", "MEDRNT_NA", "MEDMORT_NA", "OWN_NA", "SNGPNT_NA", "NOVEH_NA", "NOINT_NA", "NOPLUM_NA", "CROWD_NA")
 
 Re_Vars <- c("MEDFI_Re", "INCDIS_Re", "BELPL_Re", "PL150_Re", "EDU9YR_Re", "HSDPNHIGH_Re", "EMPWC_Re", "UNEMP_Re", "MEDHV_Re", "MEDRNT_Re", "MEDMORT_Re", "OWN_Re", "SNGPNT_Re", "NOVEH_Re", "NOINT_Re", "NOPLUM_Re", "CROWD_Re")
@@ -1039,7 +997,6 @@ ADI_Cor_L <- rbind(ADI_Cor_CBG, ADI_Cor_CT, ADI_Cor_C)
 ADI_Cor_L$Geography <- ifelse(ADI_Cor_L$Geo == "CBG", "Block Group", ADI_Cor_L$Geo)
 ADI_Cor_L$Geography <- ifelse(ADI_Cor_L$Geo == "CT", "Census Tract", ADI_Cor_L$Geography)
 ADI_Cor_L$Geography <- ifelse(ADI_Cor_L$Geo == "C", "County", ADI_Cor_L$Geography)
-#save(ADI_Cor_L, file = "ADI_Cor_L.RData")
 ```
   </div>
 </div>
@@ -1184,12 +1141,6 @@ CBG_region_summary <- ADI_CBG_Data %>%
     se_diff = sd_diff / sqrt(n_cbgs),
     .groups = "drop")
 CBG_region_summary <- CBG_region_summary[!is.na(CBG_region_summary$state_name),]
-
-## Saving objects --------------------------------------------------------
-#save(ADI_CBG_Data, file = "ADI_CBG_Data.RData")
-#save(ADI_CT_Data, file = "ADI_CT_Data.RData")
-#save(CBG_region_summary, file = "CBG_region_summary.RData")
-##save(CT_region_summary, file = "CT_region_summary.RData")
 ```
   </div>
 </div>
@@ -1224,10 +1175,6 @@ The printed outputs from this chunk reproduce the R-squared ranges and RMSE valu
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1205">Show Code</button>
   <div id="code1205" class="collapse">
 ```{r}
-#load("ADI_CBG_Data.RData")
-#load("ADI_CT_Data.RData")
-#load("ADI_C_Data.RData")
-
 ADI_CBG <- ADI_CBG_Data[, c("ReADI_CBG_NR", "NA_ADI")]
 ADI_CBG <- ADI_CBG[complete.cases(ADI_CBG),]
 ADI_CBG$Geography <- "Block Group"
@@ -1356,8 +1303,6 @@ This figure corresponds to Figure 1B in the manuscript and visually summarizes h
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1334">Show Code</button>
   <div id="code1334" class="collapse">
 ```{r}
-#load("ADI_2022_Wt.RData")
-
 ## Linear regression
 r2 <- summary(lm(CBG ~ NA_ADI, data = ADI_2022_Wt))$r.squared
 ci <- ci.R2(R2 = r2, df.1 = 1, df.2 = nrow(ADI_2022_Wt) - 1 - 1, conf.level = 0.95)
@@ -1494,8 +1439,6 @@ The printed output from this chunk provides the R-squared and RMSE ranges (with 
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1472">Show Code</button>
   <div id="code1472" class="collapse">
 ```{r}
-#load("ADI_Cor_L.RData")
-
 ### ReADI
 #### Linear regression
 r2_cbg <- summary(lm(ReADI_Cor ~ ReADI_Loadings, data = ADI_Cor_L[ADI_Cor_L$Geo == "CBG", ]))$r.squared
@@ -1648,7 +1591,6 @@ Code and figure notes: RMSE is root mean squared error. Variables are ordered by
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1624">Show Code</button>
   <div id="code1624" class="collapse">
 ```{r, eval = F}
-#load("ADI_Cor_L.RData")
 # A
 sub <- ADI_Cor_L[, c("Variables", "Geography", "ReADI_Cor", "ReADI_Loadings")]
 sub$Variables <- factor(sub$Variables, levels = sub$Variables[order(sub[sub$Geography == "Block Group", "ReADI_Cor"])])
@@ -1750,13 +1692,6 @@ The printed outputs give the minimum and maximum correlations (with 95% CIs) for
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1730">Show Code</button>
   <div id="code1730" class="collapse">
 ```{r}
-load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/Other_Indices/SDVI_CBG_2022.RData"))
-load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/Other_Indices/SDVI_CT_2022.RData"))
-load(url("https://raw.githubusercontent.com/ngladish/Publications/main/Gladish_2025_ReADI_Creation/Other_Indices/SDVI_C_2022.RData"))
-#load("ADI_CBG_Data.RData")
-#load("ADI_CT_Data.RData")
-#load("ADI_C_Data.RData")
-
 sdvi_names <- c("Reproducible\nADI", "Neighborhood\n Atlas ADI", "French\nDeprivation Index", "Social\nDeprivation Index", "Social\nVulnerability Index", "Neighborhood\nStress Score")
 
 CBG <- ADI_CBG_Data[, c("GEOID", "ReADI_CBG_NR", "NA_ADI")]
@@ -1852,7 +1787,6 @@ The SDI, FDep, and NSS7 creation script is located in [NSS7_FDep_SDI_2022_Creati
   <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1831">Show Code</button>
   <div id="code1831" class="collapse">
 ```{r, eval = F}
-op <- par(mfrow = c(1, 3))
 corrplot(cor(CBG[complete.cases(CBG),]), method = 'circle', order = "FPC", diag = FALSE, type = 'upper', p.mat = cor.mtest(CBG)$p, sig.level = 0.05/15, addCoef.col ='white', number.cex = 1.5, col = COL2('PuOr', 10), tl.col = 'black', tl.cex = 1.5)
 mtext("Block Group", side = 3, line = -5, cex = 1, font = 2)
 
@@ -1861,7 +1795,6 @@ mtext("Census Tract", side = 3, line = -5, cex = 1, font = 2)
 
 corrplot(cor(C[complete.cases(C),]), method = 'circle', order = "FPC", diag = FALSE, type = 'upper', p.mat = cor.mtest(C)$p, sig.level = 0.05/15, addCoef.col ='white', number.cex = 1.5, col = COL2('PuOr', 10), tl.col = 'black', tl.cex = 1.5)
 mtext("County", side = 3, line = -5, cex = 1, font = 2)
-par(op)
 ```
   </div>
 </div>
@@ -2087,11 +2020,13 @@ B <- paste("N(%) areas overestimated by NA-ADI, Welch t(ADI difference ~ ruralit
 
 ### Overall
 t.test_ct <- t.test(Diff_NA_ReADI ~ urban_label, data = ADI_CT_Data)
+rural_mean <- t.test_ct$estimate[["mean in group Rural"]]
+urban_mean <- t.test_ct$estimate[["mean in group Urban"]]
 welch <- t.test_ct$statistic
 cil <- t.test_ct$conf.int[1]
 ciu <- t.test_ct$conf.int[2]
 pval <- ifelse(t.test_ct$p.value < 0.001, 0.001, t.test_ct$p.value)
-C <- paste("Overall Welch t(ADI difference ~ rurality) (CT): (Welch t, ", round(welch, 1), "; 95% CI, ", round(cil, 2), "-", round(ciu, 2), "; P <", pval, ")", sep = "")
+C <- paste("Overall Welch t(ADI difference ~ rurality) (CT): (mean difference [rural-urban], ", round(rural_mean-urban_mean, 2), "; 95% CI, ", round(cil, 2), "-", round(ciu, 2), "; Welch t, ", round(welch, 1), "; P <", pval, ")", sep = "")
 
 ## CBG 
 ### Overall
@@ -2104,7 +2039,7 @@ welch <- t.test_cbg$statistic
 cil <- t.test_cbg$conf.int[1]
 ciu <- t.test_cbg$conf.int[2]
 pval <- ifelse(t.test_cbg$p.value < 0.001, 0.001, t.test_cbg$p.value)
-D <- paste("N(%) areas overestimated by NA-ADI, Welch t(ADI difference ~ rurality) (CBG): (rural mean, ", round(rural_mean, 2), " [SD, ", round(rural_sd, 2), "]; urban mean, ", round(urban_mean, 4), " [SD, ", round(urban_sd, 2), "]; Welch t, ", round(welch, 1), " [95% CI, ", round(cil, 2), "-", round(ciu, 2), "]; P <", pval, ")", sep = "")
+D <- paste("N(%) areas overestimated by NA-ADI, Welch t(ADI difference ~ rurality) (CBG): (rural mean, ", round(rural_mean, 2), " [SD, ", round(rural_sd, 2), "]; urban mean, ", round(urban_mean, 4), " [SD, ", round(urban_sd, 2), "]; mean difference [rural-urban], ", round(rural_mean-urban_mean, 2), "; 95% CI, ", round(cil, 2), "-", round(ciu, 2), "; Welch t, ", round(welch, 1), "; P <", pval, ")", sep = "")
 
 # Cohen d ############################################################## 
 ADI_CBG_Data <- ADI_CBG_Data[!is.na(ADI_CBG_Data$Diff_NA_ReADI),]
