@@ -1288,7 +1288,7 @@ CBG_region_summary <- CBG_region_summary[!is.na(CBG_region_summary$state_name),]
 
 We structured the analyses to evaluate how closely the Reproducible Area Deprivation Index (ReADI) recapitulates the Neighborhood Atlas ADI (NA-ADI), where and why the two indices diverge, and whether those divergences matter for downstream applications such as comparisons with other indices and prediction of mortality.
 
-We first assess agreement between NA-ADI and ReADI scores and factor loadings across block group, tract, and county geographies, and compare how each index aligns with other widely used deprivation and vulnerability measures (SDI, SVI, FDep, NSS7).
+We first assess agreement between NA-ADI and ReADI scores and factor weights and loadings across block group, tract, and county geographies, and compare how each index aligns with other widely used deprivation and vulnerability measures (SDI, SVI, FDep, NSS7).
 We then quantify where NA-ADI and ReADI differ most in absolute score terms and how those discrepancies are distributed across the U.S. and by urban–rural status.
 Finally, we examine whether ReADI’s differences from NA-ADI translate into gains in explained variance for 2015 life expectancy, overall and within bins defined by the magnitude of NA-ADI vs ReADI disagreement.
 
@@ -1438,19 +1438,19 @@ ggplot(ADI_Merge, aes(ReADI, NA_ADI, group = Geography)) +
 
 <br><br>
 
-## Agreement between ADI factor loadings (linear regression)
+## Agreement between ADI factor weights (linear regression)
 
 ------------------------------------------------------------------------
 
 <br>
 
-This panel compares the factor loadings (weights) assigned to each socioeconomic indicator in NA-ADI and ReADI across geographic levels.
+This panel compares the factor weights assigned to each socioeconomic indicator in NA-ADI and ReADI across geographic levels.
 The data frame ADI_2022_Wt contains, for each indicator, the original NA-ADI weight (from the Singh tract-level formulation) and the corresponding ReADI weights at the block group (CBG), census tract (CT), and county (C) levels.
 
 We assign descriptive labels to indicators (e.g., income, education, employment, housing), reshape the weights to long format (sub) so each row represents an indicator–geography pair, and plot ReADI weights on the x-axis against NA-ADI weights on the y-axis, with points colored by indicator (Variables).
 A linear fit is overlaid in each panel, and facet_wrap(\~Geography) produces separate panels for block groups, tracts, and counties.
 
-This figure corresponds to Figure 1B in the manuscript and visually summarizes how closely the ReADI factor loadings reproduce the original NA-ADI weights across indicators and geographies.
+This figure corresponds to Figure 1B in the manuscript and visually summarizes how closely the ReADI factor weights reproduce the original NA-ADI weights across indicators and geographies.
 
 :::: {style="margin:16px 0"}
 <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1334">
@@ -1516,7 +1516,7 @@ I
 
 <br>
 
-This panel compares the factor loadings (weights) assigned to each socioeconomic indicator in NA-ADI versus ReADI across geographic levels.
+This panel compares the factor weights assigned to each socioeconomic indicator in NA-ADI versus ReADI across geographic levels.
 The data frame ADI_2022_Wt contains, for each indicator, the original NA-ADI weight (derived from the Singh tract-level formulation) and the corresponding ReADI weights at the block group (CBG), census tract (CT), and county (C) levels.
 We:
 
@@ -1525,7 +1525,7 @@ We:
 -   Plot ReADI weights on the x-axis and NA-ADI weights on the y-axis, with each point representing one indicator. Points are colored by indicator (Variables) and a linear fit is overlaid within each panel.\
 -   Use facet_wrap(\~Geography) so that separate panels show the weight relationships at the block group, tract, and county levels.
 
-This figure corresponds to Figure 1B in the manuscript and visually summarizes how closely the ReADI factor loadings reproduce the original NA-ADI weights across indicators and geographies.
+This figure corresponds to Figure 1B in the manuscript and visually summarizes how closely the ReADI factor weights reproduce the original NA-ADI weights across indicators and geographies.
 
 :::: {style="margin:16px 0"}
 <button type="button" class="btn btn-dark" control-id="ControlID-54" data-bs-toggle="collapse" data-bs-target="#code1405">
